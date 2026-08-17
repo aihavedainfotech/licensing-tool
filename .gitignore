@@ -1,0 +1,14 @@
+node_modules/
+.env
+dist/
+build/
+.DS_Store
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.app.json
+!tsconfig.node.json
+!eslint.config.js
+!vite.config.ts
+*.log

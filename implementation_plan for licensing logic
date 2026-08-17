@@ -1,0 +1,226 @@
+# HCM Licence Analytics — Full Implementation Plan
+
+## Background
+
+You have a two-file upload system:
+1. **Service Catalog (JSON)** — A static reference file that maps service codes → service names → privileges. Uploaded once, stored permanently in S3 unless explicitly deleted.
+2. **Usage Report (XLSX)** — A dynamic file uploaded periodically. It maps employees → roles → privileges. Converted to JSON by the backend.
+
+The Results page then **joins** these two datasets and calculates licence counts with the following rules:
+- One role with a paid privilege assigned to 3000 employees = **3000 licences**
+- One employee with 10 privileges from the **same service** = **1 licence** (per-service deduplication)
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> **Q1 — Service Catalog JSON shape**: What does your JSON file look like? Please confirm the exact format so we build the parser correctly. Expected format:
+> ```json
+> {
+>   "services": [
+>     {
+>       "code": "SF",
+>       "name": "SuccessFactors",
+>       "privileges": [
+>         { "code": "PRIV_001", "name": "View Payroll", "isCostly": true }
+>       ]
+>     }
+>   ]
+> }
+> ```
+
+> [!IMPORTANT]
+> **Q2 — XLSX columns**: What columns does your Excel file have? Expected columns:
+> - Employee Name / Employee ID
+> - Role Name
+> - Privilege Code (or Name)
+> - Service Code (or Name)
+> Please confirm so we parse the right columns.
+
+> [!IMPORTANT]
+> **Q3 — What makes a privilege "costly"?**: Is every privilege in the catalog costly, or does the catalog distinguish between paid vs free privileges? (e.g., an `isCostly: true` flag, or a separate column in the XLSX?)
+
+---
+
+## Proposed Architecture
+
+```
+S3 Bucket
+├── catalog/service-catalog.json    ← static, permanent
+└── uploads/<uuid>_<file>.xlsx      ← dynamic, can be replaced
+    (also stored as: processed/<uuid>_results.json after parsing)
+```
+
+```
+Frontend (React)          Backend (Node/Express)       AWS S3
+    │                            │                        │
+    │── Upload JSON ────────────>│── Presigned URL ──────>│ catalog/
+    │                            │                        │
+    │── Upload XLSX ────────────>│── Presigned URL ──────>│ uploads/
+    │                            │                        │
+    │── POST /api/process ──────>│── Read XLSX from S3    │
+    │                            │── Parse & join catalog │
+    │                            │── Compute licences     │
+    │                            │── Save results JSON ──>│ processed/
+    │<── Return results JSON ────│                        │
+    │                            │                        │
+    │── GET /api/catalog-status >│── Check S3 for ───────>│ catalog/
+    │<── { exists: true/false } ─│   catalog file         │
+```
+
+---
+
+## Licence Counting Logic
+
+This is the core business rule engine that runs entirely on the backend.
+
+```
+For each employee:
+  - Collect all their assigned roles
+  - Expand roles → privileges
+  - Join privileges → service (via catalog)
+  - De-duplicate: if employee has privileges A, B, C all under "SuccessFactors"
+    → count as 1 licence for "SuccessFactors" for that employee
+  - Sum across all employees per service → Total Licences Used
+```
+
+**Example:**
+```
+Employee: John Smith
+  Role: HR Admin     → Privilege: View Payroll (SuccessFactors)
+  Role: Payroll User → Privilege: Edit Payroll (SuccessFactors)
+  Role: Finance View → Privilege: View Reports (SAP)
+
+John's licence count:
+  SuccessFactors: 1  (two privileges, but same service → deduplicated)
+  SAP: 1
+  Total: 2 licences
+```
+
+---
+
+## Proposed Changes
+
+### 1. Backend — `server/index.js`
+
+Install `xlsx` npm package on the **server** side (not frontend):
+```bash
+cd server && npm install xlsx
+```
+
+#### [MODIFY] New API Endpoints
+
+**`POST /api/upload-catalog`** — Receive the s3Key of the uploaded JSON, read it from S3, validate it, and store the s3Key reference persistently (in a local `catalog-key.json` file or S3 metadata).
+
+**`GET /api/catalog-status`** — Returns whether a service catalog has been uploaded and its filename.
+
+**`POST /api/process`** — Triggered after XLSX upload. Receives the s3Key of the uploaded XLSX, then:
+1. Downloads the XLSX from S3
+2. Parses it with `xlsx` library
+3. Downloads the service catalog JSON from S3
+4. Runs the licence calculation engine
+5. Returns the full results JSON (or saves to S3 and returns a reference)
+
+**`DELETE /api/catalog`** — Deletes the catalog from S3 and clears the reference file.
+
+---
+
+### 2. Backend — `server/licenceEngine.js` *(NEW)*
+
+Pure function module with the business logic:
+```js
+function computeLicences(catalog, usageRows) {
+  // For each employee → expand roles → map to services → deduplicate → count
+}
+```
+
+---
+
+### 3. Frontend — `src/types/index.ts`
+
+Replace old mock-shaped types with clean types matching the real data:
+
+```ts
+// Catalog (from JSON upload)
+interface CatalogPrivilege { code: string; name: string; isCostly?: boolean }
+interface CatalogService   { code: string; name: string; privileges: CatalogPrivilege[] }
+interface ServiceCatalog   { services: CatalogService[] }
+
+// Usage (from XLSX upload)
+interface UsageRow { employeeId: string; employeeName: string; role: string; privilegeCode: string; serviceCode: string }
+
+// Results (computed by backend)
+interface EmployeeLicence { id: string; name: string; licencedServices: string[] }
+interface ServiceSummary  {
+  code: string; name: string
+  licenceCount: number      // unique employees using this service
+  employees: EmployeeLicence[]
+}
+interface AnalysisResult { services: ServiceSummary[]; totalLicences: number; processedAt: string }
+```
+
+---
+
+### 4. Frontend — `src/pages/UploadPage.tsx` (or where uploads happen)
+
+- **Card 1 (Service Catalog):** Accept JSON only. After upload succeeds, call `POST /api/upload-catalog` with the s3Key. On load, call `GET /api/catalog-status` — if catalog exists, show a "Catalog Loaded ✓" badge instead of the upload zone.
+- **Card 2 (Usage Report):** Accept XLSX only. After upload succeeds, enable the "Analyze" button.
+- **Analyze button:** Call `POST /api/process` with the XLSX s3Key → navigate to results.
+
+---
+
+### 5. Frontend — `src/pages/ResultsPage.tsx`
+
+Completely rewrite to use real data structure:
+
+**Summary View (default):**
+```
+┌─────────────────────────────────────────────────────────┐
+│ SuccessFactors                        1,234 licences    │
+│ SAP Concur                              456 licences    │
+│ Workday                                  89 licences    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Drill-down (click a service):**
+```
+SuccessFactors → List of all employees using it (paginated)
+  ↓ click employee → show their roles & privileges
+```
+
+---
+
+## Verification Plan
+
+### Backend Tests
+```bash
+# 1. Start server
+cd server && node index.js
+
+# 2. Test catalog upload flow
+curl -X POST http://localhost:3001/api/upload-catalog -H "Content-Type: application/json" -d '{"s3Key":"catalog/test.json"}'
+
+# 3. Test process endpoint with real data
+curl -X POST http://localhost:3001/api/process -H "Content-Type: application/json" -d '{"xlsxS3Key":"uploads/test.xlsx"}'
+```
+
+### Manual Verification
+1. Upload a sample JSON catalog → green badge appears on card 1
+2. Upload a sample XLSX → Analyze button activates
+3. Click Analyze → Results page shows real service names and licence counts
+4. Click a service → employee list drills down
+5. Click an employee → their specific roles and privileges shown
+6. Delete catalog → card 1 resets to upload state
+
+---
+
+## Implementation Order
+
+1. ✅ Define final data shapes (types)
+2. Install `xlsx` on server
+3. Build `licenceEngine.js` 
+4. Add new API endpoints to `server/index.js`
+5. Update Upload page (Card 1 & 2 behavior + Analyze trigger)
+6. Rewrite Results page with real data rendering
+7. Test end-to-end with sample files
