@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ChevronRight, Users, Shield,
   Layers, AlertTriangle, CheckCircle2, XCircle, Clock,
-  Search, Download, Loader2, FileX2, TrendingUp,
-  BarChart3, Key, Sparkles, Brain, LayoutTemplate
+  Download, Loader2, FileX2,
+  BarChart3, Key, Sparkles, Brain, LayoutTemplate,
+  ChevronLeft, Package, TrendingUp, TrendingDown
 } from 'lucide-react'
 import Header from '../components/Header'
-import AnimatedLogo from '../components/AnimatedLogo'
 import type { Service, Privilege, Role, Employee, ParseResult } from '../types'
+import { useTemplate } from '../context/TemplateContext'
 
-/* utilities */
+/* ─── Utilities ──────────────────────────────────────── */
 function fmtNum(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
@@ -22,10 +23,11 @@ function fmtCost(n: number) {
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`
   return `$${n}`
 }
+
 const RISK_CONFIG = {
-  high:   { bg: '#fef2f2', text: '#dc2626', border: '#fecaca', dot: '#ef4444', label: 'HIGH'   },
-  medium: { bg: '#fffbeb', text: '#d97706', border: '#fde68a', dot: '#f59e0b', label: 'MEDIUM' },
-  low:    { bg: '#f0fdf4', text: '#059669', border: '#bbf7d0', dot: '#10b981', label: 'LOW'    },
+  high:   { bg: '#fef2f2', text: '#dc2626', border: '#fecaca', dot: '#ef4444', label: 'HIGH' },
+  medium: { bg: '#fffbeb', text: '#d97706', border: '#fde68a', dot: '#f59e0b', label: 'MED'  },
+  low:    { bg: '#f0fdf4', text: '#059669', border: '#bbf7d0', dot: '#10b981', label: 'LOW'  },
 }
 const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string; Icon: React.ElementType }> = {
   active:     { bg: '#ecfdf5', text: '#059669', label: 'Active',   Icon: CheckCircle2 },
@@ -42,716 +44,500 @@ const AVATAR_PALETTE = [
   'linear-gradient(135deg,#db2777,#f472b6)',
 ]
 
-function UsageBar({ used, total, color }: { used: number; total: number; color: string }) {
+/* ─── UsageBar ────────────────────────────────────────── */
+function UsageBar({ used, total, color = '#1d6fa4' }: { used: number; total: number; color?: string }) {
   const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0
   const fill = pct >= 95 ? '#ef4444' : pct >= 80 ? '#f97316' : color
   return (
     <div>
-      <div className="flex justify-between text-xs mb-1.5" style={{ color: 'var(--theme-text-muted)' }}>
-        <span><strong style={{ color: 'var(--theme-text-main)' }}>{used.toLocaleString()}</strong> used</span>
-        <span style={{ color: pct >= 95 ? '#ef4444' : '#94a3b8' }}>{total > 0 ? `${pct}%` : '—'}</span>
+      <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--theme-text-muted)' }}>
+        <span>{used.toLocaleString()} used</span>
+        <span style={{ color: pct >= 95 ? '#ef4444' : 'var(--theme-text-muted)' }}>{total > 0 ? `${pct}%` : '—'}</span>
       </div>
-      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--theme-bg-hover)' }}>
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--theme-bg-hover)' }}>
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: fill }} />
       </div>
     </div>
   )
 }
 
-type Crumb = { label: string; icon: React.ReactNode; onClick: () => void }
-function Breadcrumb({ crumbs }: { crumbs: Crumb[] }) {
+/* ─── RiskBadge ───────────────────────────────────────── */
+function RiskBadge({ risk }: { risk: 'high' | 'medium' | 'low' }) {
+  const c = RISK_CONFIG[risk]
   return (
-    <nav className="flex items-center gap-1.5 flex-wrap mb-6">
-      {crumbs.map((c, i) => (
-        <React.Fragment key={i}>
-          {i < crumbs.length - 1 ? (
-            <button onClick={c.onClick}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:scale-105"
-              style={{ background: 'var(--theme-blue-bg)', color: 'var(--theme-blue-text)' }}>
-              {c.icon} {c.label}
-            </button>
-          ) : (
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
-              style={{ background: '#1a2b4a', color: 'white' }}>
-              {c.icon} {c.label}
-            </span>
-          )}
-          {i < crumbs.length - 1 && <ChevronRight size={13} style={{ color: 'var(--theme-text-light)' }} />}
-        </React.Fragment>
-      ))}
-    </nav>
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide"
+      style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}>
+      <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: c.dot }} />
+      {c.label}
+    </span>
   )
 }
 
-function Pagination({ page, totalPages, setPage }: { page: number; totalPages: number; setPage: (p: number) => void }) {
-  if (totalPages <= 1) return null;
-  return (
-    <div className="flex items-center justify-between px-6 py-3  border-t" style={{ borderColor: 'var(--theme-border)' }}>
-      <button 
-        disabled={page === 1} 
-        onClick={() => setPage(page - 1)}
-        className="px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors"
-        style={{ color: 'var(--theme-text-main)', background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}
-      >
-        Previous
-      </button>
-      <span className="text-sm font-medium" style={{ color: 'var(--theme-text-muted)' }}>
-        Page <strong style={{ color: 'var(--theme-text-main)' }}>{page}</strong> of {totalPages}
-      </span>
-      <button 
-        disabled={page === totalPages} 
-        onClick={() => setPage(page + 1)}
-        className="px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50 transition-colors"
-        style={{ color: 'var(--theme-text-main)', background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)' }}
-      >
-        Next
-      </button>
-    </div>
-  )
-}
-
-/* LEVEL 0 - SERVICES */
-function ServicesView({ result, onSelectService }: { result: ParseResult; onSelectService: (s: Service) => void }) {
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 10;
-  
-  useEffect(() => { setPage(1) }, [search]);
-  
-  const filtered = result.services.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    (s.vendor ?? '').toLowerCase().includes(search.toLowerCase())
-  );
-  
-  const totalCost     = result.services.reduce((a, s) => a + s.totalCost, 0)
-  const totalLicences = result.services.reduce((a, s) => a + s.licenseCount, 0)
-  const totalPrivs    = result.services.reduce((a, s) => a + s.privilegeCount, 0)
-  
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
-
-  return (
-    <div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        {[
-          { label: 'Total Licence Cost', value: fmtCost(totalCost),   sub: 'across all services',  icon: <Key size={22} />,       bg: 'var(--theme-blue-bg)', fg: 'var(--theme-blue-text)' },
-          { label: 'Active Licences',    value: fmtNum(totalLicences), sub: 'unique assignments',   icon: <BarChart3 size={22} />, bg: 'var(--theme-green-bg)', fg: 'var(--theme-green-text)' },
-          { label: 'Privilege Types',    value: totalPrivs,            sub: 'across all services',  icon: <Shield size={22} />,   bg: 'var(--theme-purple-bg)', fg: 'var(--theme-purple-text)' },
-        ].map((k, i) => (
-          <div key={i} className="flex items-center gap-4 rounded-2xl p-5 border "
-            style={{ borderColor: 'var(--theme-border)', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', background: 'var(--theme-bg-card)' }}>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: k.bg, color: k.fg }}>{k.icon}</div>
-            <div>
-              <p className="text-2xl font-black tracking-tight" style={{ color: 'var(--theme-text-main)' }}>{k.value}</p>
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--theme-text-muted)' }}>{k.label}</p>
-              <p className="text-xs" style={{ color: 'var(--theme-text-light)' }}>{k.sub}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="relative mb-6 max-w-sm">
-        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--theme-text-muted)' }} />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search services…"
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border  outline-none" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-main)' }} />
-      </div>
-
-      <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--theme-text-muted)' }}>Service Areas — click to explore</h2>
-      
-      <div className=" border rounded-xl overflow-hidden" style={{ background: 'var(--theme-bg-card)' }} style={{ borderColor: 'var(--theme-border)', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', background: 'var(--theme-bg-card)' }}>
-        <table className="w-full text-left text-sm">
-          <thead className="border-b" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-muted)' }}>
-            <tr>
-              <th className="px-6 py-4 font-semibold">Service Name</th>
-              <th className="px-6 py-4 font-semibold text-right">Limit</th>
-              <th className="px-6 py-4 font-semibold text-right">Over</th>
-              <th className="px-6 py-4 font-semibold text-right">Licences Used</th>
-              <th className="px-6 py-4 font-semibold text-right">Total Cost</th>
-              <th className="px-6 py-4 font-semibold text-right">Privileges</th>
-              <th className="px-6 py-4 font-semibold"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
-            {paginated.map(svc => (
-              <tr key={svc.id} className="hover: transition-colors cursor-pointer group" onClick={() => onSelectService(svc)}>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="font-bold" style={{ color: 'var(--theme-text-main)' }}>{svc.name}</div>
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {svc.sku && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ background: 'var(--theme-bg-hover)', color: 'var(--theme-text-muted)' }}>SKU: {svc.sku}</span>}
-                    {svc.vendor && <div className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>{svc.vendor}</div>}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right font-semibold">
-                  {svc.subscribedQuantity !== undefined ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold" style={{ background: '#ecfdf5', color: '#059669' }}>
-                      {svc.subscribedQuantity}
-                    </span>
-                  ) : <span className="text-gray-300">-</span>}
-                </td>
-                <td className="px-6 py-4 text-right font-semibold">
-                  {svc.overProvisioned > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ background: '#fef2f2', color: '#dc2626' }}>
-                      <AlertTriangle size={10} /> {svc.overProvisioned}
-                    </span>
-                  ) : <span className="text-gray-300">-</span>}
-                </td>
-                <td className="px-6 py-4 text-right font-semibold" style={{ color: 'var(--theme-text-main)' }}>
-                  {svc.licenseCount.toLocaleString()}
-                </td>
-                <td className="px-6 py-4 text-right font-semibold" style={{ color: 'var(--theme-text-main)' }}>
-                  {fmtCost(svc.totalCost)}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium" style={{ background: 'var(--theme-bg-hover)', color: 'var(--theme-text-muted)' }}>
-                    {svc.privilegeCount}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right text-slate-300 group-hover:text-blue-500 transition-colors">
-                  <ChevronRight size={18} className="inline-block" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length > 0 && (
-          <Pagination page={page} totalPages={totalPages} setPage={setPage} />
-        )}
-      </div>
-      {filtered.length === 0 && (
-        <div className="text-center py-16" style={{ color: 'var(--theme-text-muted)' }}>
-          <Search size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-semibold">No services match your search</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* LEVEL 1 - PRIVILEGES */
-function PrivilegesView({ service, onSelectPrivilege }: { service: Service; onSelectPrivilege: (p: Privilege) => void }) {
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 10;
-  
-  useEffect(() => { setPage(1) }, [search]);
-  
-  const filtered = service.privileges.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) || (p.description ?? '').toLowerCase().includes(search.toLowerCase())
-  )
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
-  
-  return (
-    <div>
-      <div className="flex items-center gap-4 p-5 rounded-2xl mb-6 border-2" style={{ background: service.bgGradient, borderColor: `${service.color}33` }}>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-black" style={{ color: 'var(--theme-text-main)' }}>{service.name}</h3>
-          <div className="flex items-center gap-2 mt-1 mb-1">
-            {service.sku && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ background: '#ffffff55', color: 'var(--theme-text-main)' }}>SKU: {service.sku}</span>}
-            {service.subscribedQuantity !== undefined && (
-              <span className="text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ background: '#ecfdf5', color: '#059669' }}>
-                Limit: {service.subscribedQuantity}
-              </span>
-            )}
-            {service.overProvisioned > 0 && (
-              <span className="flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded" style={{ background: '#fef2f2', color: '#dc2626' }}>
-                <AlertTriangle size={12} /> {service.overProvisioned} Over
-              </span>
-            )}
-          </div>
-          <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>{service.vendor ? `${service.vendor} · ` : ''}{service.licenseCount.toLocaleString()} licences · {service.privilegeCount} privileges</p>
-        </div>
-        <div className="hidden sm:flex flex-col items-end">
-          <p className="text-2xl font-black" style={{ color: service.color }}>{fmtCost(service.totalCost)}</p>
-          <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>Total Cost</p>
-        </div>
-      </div>
-      <div className="relative mb-6 max-w-sm">
-        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--theme-text-muted)' }} />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search privileges…"
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border  outline-none" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-main)' }} />
-      </div>
-      <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--theme-text-muted)' }}>Privileges — click to see roles</h2>
-      
-      <div className=" border rounded-xl overflow-hidden" style={{ background: 'var(--theme-bg-card)' }} style={{ borderColor: 'var(--theme-border)', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', background: 'var(--theme-bg-card)' }}>
-        <table className="w-full text-left text-sm">
-          <thead className="border-b" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-muted)' }}>
-            <tr>
-              <th className="px-6 py-4 font-semibold">Privilege</th>
-              <th className="px-6 py-4 font-semibold text-right">Cost / user</th>
-              <th className="px-6 py-4 font-semibold text-right">Roles</th>
-              <th className="px-6 py-4 font-semibold text-center">Risk</th>
-              <th className="px-6 py-4 font-semibold"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
-            {paginated.map(priv => {
-              const rc = RISK_CONFIG[priv.risk]
-              return (
-                <tr key={priv.id} className="hover: transition-colors cursor-pointer group" onClick={() => onSelectPrivilege(priv)}>
-                  <td className="px-6 py-4">
-                    <div className="font-bold" style={{ color: 'var(--theme-text-main)' }}>{priv.name}</div>
-                    <div className="text-xs mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>{priv.description}</div>
-                  </td>
-                  <td className="px-6 py-4 text-right font-semibold" style={{ color: 'var(--theme-text-main)' }}>
-                    {fmtCost(priv.costPerUser)}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium" style={{ background: 'var(--theme-bg-hover)', color: 'var(--theme-text-muted)' }}>
-                      {priv.roles?.length ?? 0}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border" style={{ background: rc.bg, color: rc.text, borderColor: rc.border }}>
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: rc.dot }} />
-                      {rc.label}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right text-slate-300 group-hover:text-blue-500 transition-colors">
-                    <ChevronRight size={18} className="inline-block" />
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-        {filtered.length > 0 && (
-          <Pagination page={page} totalPages={totalPages} setPage={setPage} />
-        )}
-      </div>
-      {filtered.length === 0 && (
-        <div className="text-center py-16" style={{ color: 'var(--theme-text-muted)' }}>
-          <Shield size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-semibold">No privileges match your search</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* AI INSIGHT PANEL */
-function AIInsightPanel({ privilegeName, color }: { privilegeName: string, color: string }) {
-  const [insight, setInsight] = useState<{ explanation: string, isCostedMessage: string, alternative: string, impact: string, usage?: any } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    setInsight(null);
-    setError('');
-    
-    async function fetchInsight() {
-      setLoading(true);
-      try {
-        const selectedModel = localStorage.getItem('modelSuggest') || 'deepseek-chat';
-        const res = await fetch('http://localhost:3001/api/ai-insight', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ privilegeName, model: selectedModel })
-        });
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || 'Failed to fetch AI insight');
-        }
-        const data = await res.json();
-        if (!cancelled) {
-          setInsight(data);
-          setLoading(false);
-        }
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(err.message);
-          setLoading(false);
-        }
-      }
-    }
-    fetchInsight();
-    return () => { cancelled = true; }
-  }, [privilegeName]);
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center p-10 mb-6 rounded-2xl border-2  relative overflow-hidden" style={{ borderColor: `${color}44` }}>
-        {/* Animated background glow */}
-        <div className="absolute inset-0 opacity-10 animate-pulse" style={{ background: `radial-gradient(circle at center, ${color}, transparent 70%)` }} />
-        
-        <div className="relative z-10 flex flex-col items-center animate-bounce mt-2">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-lg" style={{ background: color, color: 'white' }}>
-            <Brain size={32} />
-          </div>
-        </div>
-        
-        <h3 className="text-base font-black relative z-10 tracking-wide mb-2" style={{ color: 'var(--theme-text-main)' }}>
-          AI is analyzing <span style={{ color }}>{privilegeName}</span>...
-        </h3>
-        
-        <div className="relative z-10 flex flex-col items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--theme-text-muted)' }}>
-          <p className="flex items-center gap-2"><Loader2 size={12} className="animate-spin" /> Cross-referencing licensing configurations</p>
-          <p className="flex items-center gap-2 text-slate-400">Evaluating cost impact & alternative privileges</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !insight) return null; // Fallback silently if no data or error
-
-  const renderText = (val: any) => {
-    if (!val) return '';
-    if (typeof val === 'string') return val;
-    if (typeof val === 'object') {
-      if (val.privilege && val.description) return `${val.privilege}: ${val.description}`;
-      if (val.name && val.description) return `${val.name}: ${val.description}`;
-      return Object.values(val).map(String).join(' - ');
-    }
-    return String(val);
-  }
-
-  return (
-    <div className="mb-6 rounded-2xl border-2 overflow-hidden  relative shadow-sm hover:shadow-md transition-shadow" style={{ borderColor: `${color}33` }}>
-      <div className="absolute top-0 left-0 w-1.5 h-full" style={{ background: color }} />
-      
-      <div className="px-5 py-3 border-b flex items-center justify-between" style={{ background: 'linear-gradient(90deg, #f8fafc, #ffffff)', borderColor: 'var(--theme-border)' }}>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: `${color}15` }}>
-            <Sparkles size={14} style={{ color }} />
-          </div>
-          <h3 className="text-sm font-black tracking-wide" style={{ color: 'var(--theme-text-main)' }}>AI Insight</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          {insight.usage && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider" style={{ background: 'var(--theme-bg-hover)', color: 'var(--theme-text-muted)' }}>
-              Used {insight.usage.total_tokens} Tokens
-            </span>
-          )}
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider" style={{ background: 'var(--theme-bg-hover)', color: 'var(--theme-text-muted)' }}>Powered by {(localStorage.getItem('modelSuggest') || 'deepseek').startsWith('gemini') ? 'Gemini' : 'DeepSeek'}</span>
-        </div>
-      </div>
-      
-      <div className="p-5 flex flex-col gap-5">
-        <div className="flex gap-3 items-start">
-          <div className="mt-1"><Brain size={16} style={{ color: color }} /></div>
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--theme-text-muted)' }}>Privilege Overview</h4>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--theme-text-main)' }}>{renderText(insight.explanation)}</p>
-          </div>
-        </div>
-        
-        <hr className="border-t border-dashed" style={{ borderColor: 'var(--theme-border)' }} />
-
-        <div className="flex gap-3 items-start">
-          <div className="mt-1"><AlertTriangle size={16} style={{ color: '#dc2626' }} /></div>
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--theme-text-muted)' }}>Cost Alert</h4>
-            <p className="text-sm font-semibold leading-relaxed" style={{ color: 'var(--theme-text-main)' }}>{renderText(insight.isCostedMessage)}</p>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-xl border-2" style={{ background: 'var(--theme-bg-page)', borderColor: 'var(--theme-border)' }}>
-            <h4 className="text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: 'var(--theme-text-muted)' }}>
-              <Shield size={12} /> Alternative Suggestion
-            </h4>
-            <p className="text-sm leading-relaxed" style={{ color: 'var(--theme-text-main)' }}>{renderText(insight.alternative)}</p>
-          </div>
-          <div className="p-4 rounded-xl border-2" style={{ background: '#fffbeb', borderColor: '#fde68a' }}>
-            <h4 className="text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: '#d97706' }}>
-              <TrendingUp size={12} /> Business Impact
-            </h4>
-            <p className="text-sm leading-relaxed" style={{ color: '#92400e' }}>{renderText(insight.impact)}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* LEVEL 2 - ROLES */
-function RolesView({ privilege, service, onSelectRole }: { privilege: Privilege; service: Service; onSelectRole: (r: Role) => void }) {
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 10;
-  
-  useEffect(() => { setPage(1) }, [search]);
-  
-  const roles = privilege.roles || [];
-  const filtered = roles.filter(r => r.name.toLowerCase().includes(search.toLowerCase()));
-  
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
-
-  const rc = RISK_CONFIG[privilege.risk]
-  return (
-    <div>
-      <div className="flex flex-wrap items-center gap-5 p-5 rounded-2xl mb-6 border-2" style={{ background: service.bgGradient, borderColor: `${service.color}33` }}>
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: `${service.color}22` }}>
-          <Shield size={20} style={{ color: service.color }} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="text-base font-black" style={{ color: 'var(--theme-text-main)' }}>{privilege.name}</h3>
-            <span className="text-xs font-bold px-2 py-0.5 rounded-lg border" style={{ background: rc.bg, color: rc.text, borderColor: rc.border }}>{rc.label}</span>
-          </div>
-          <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>{privilege.description}</p>
-        </div>
-        <div className="flex gap-6">
-          {[
-            { label: 'Cost / user', value: fmtCost(privilege.costPerUser) },
-            { label: 'Total cost',  value: fmtCost(privilege.totalCost)   },
-            { label: 'Roles',       value: privilege.roles?.length ?? 0   },
-          ].map(s => (
-            <div key={s.label} className="text-center">
-              <p className="text-xl font-black" style={{ color: service.color }}>{s.value}</p>
-              <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      <AIInsightPanel privilegeName={privilege.name} color={service.color} />
-
-      <div className="relative mb-6 max-w-sm">
-        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--theme-text-muted)' }} />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search roles…"
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border  outline-none" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-main)' }} />
-      </div>
-
-      <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--theme-text-muted)' }}>Roles using this privilege — click to see employees</h2>
-      {(!privilege.roles || privilege.roles.length === 0) ? (
-        <div className="text-center py-16" style={{ color: 'var(--theme-text-muted)' }}>
-          <Layers size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-semibold">No roles assigned to this privilege</p>
-        </div>
-      ) : (
-        <div className=" border rounded-xl overflow-hidden" style={{ background: 'var(--theme-bg-card)' }} style={{ borderColor: 'var(--theme-border)', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', background: 'var(--theme-bg-card)' }}>
-          <table className="w-full text-left text-sm">
-            <thead className="border-b" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-muted)' }}>
-              <tr>
-                <th className="px-6 py-4 font-semibold">Role Name</th>
-                <th className="px-6 py-4 font-semibold text-right">Employees</th>
-                <th className="px-6 py-4 font-semibold text-right">Usage</th>
-                <th className="px-6 py-4 font-semibold"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
-              {paginated.map(role => {
-                const isHot = role.licenseTotal > 0 && role.licenseUsed / role.licenseTotal >= 0.9
-                return (
-                  <tr key={role.id} className={`hover: transition-colors cursor-pointer group ${isHot ? 'bg-red-50/30' : ''}`} onClick={() => onSelectRole(role)}>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="font-bold" style={{ color: 'var(--theme-text-main)' }}>{role.name}</div>
-                        {isHot && (
-                          <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: '#fef2f2', color: '#dc2626' }}>
-                            <AlertTriangle size={10} /> Near Limit
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right font-semibold" style={{ color: 'var(--theme-text-main)' }}>
-                      {role.employeeCount.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 min-w-[150px]">
-                      {role.licenseTotal > 0 ? (
-                        <UsageBar used={role.licenseUsed} total={role.licenseTotal} color={isHot ? '#ef4444' : service.color} />
-                      ) : (
-                        <span className="text-slate-400 text-right block">—</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-right text-slate-300 group-hover:text-blue-500 transition-colors">
-                      <ChevronRight size={18} className="inline-block" />
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          {filtered.length > 0 && (
-            <Pagination page={page} totalPages={totalPages} setPage={setPage} />
-          )}
-        </div>
-      )}
-      {roles.length > 0 && filtered.length === 0 && (
-        <div className="text-center py-16" style={{ color: 'var(--theme-text-muted)' }}>
-          <Search size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-semibold">No roles match your search</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* LEVEL 3 - EMPLOYEES */
-function EmployeesView({ role, service }: { role: Role; service: Service }) {
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 10;
-  
-  useEffect(() => { setPage(1) }, [search]);
-  
-  const employees = role.employees ?? []
-  const filtered = employees.filter(e =>
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    (e.email ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (e.department ?? '').toLowerCase().includes(search.toLowerCase())
-  )
-  
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
-
-  return (
-    <div>
-      <div className="flex flex-wrap items-center gap-5 p-5 rounded-2xl mb-6 border-2" style={{ background: service.bgGradient, borderColor: `${service.color}33` }}>
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: `${service.color}22` }}>
-          <Layers size={20} style={{ color: service.color }} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-base font-black" style={{ color: 'var(--theme-text-main)' }}>{role.name}</h3>
-          <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>{role.employeeCount.toLocaleString()} employees assigned · {service.name}</p>
-        </div>
-        {role.licenseTotal > 0 && (
-          <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--theme-text-muted)' }}>
-            <TrendingUp size={15} /> {role.licenseUsed} / {role.licenseTotal} licences
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div className="relative max-w-sm w-full">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--theme-text-muted)' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search employees…"
-            className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border  outline-none" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-main)' }} />
-        </div>
-        <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>
-          Showing <strong style={{ color: 'var(--theme-text-main)' }}>{filtered.length}</strong> of {employees.length} employees
-        </p>
-      </div>
-      {employees.length === 0 ? (
-        <div className="text-center py-16" style={{ color: 'var(--theme-text-muted)' }}>
-          <Users size={40} className="mx-auto mb-3 opacity-30" />
-          <p className="font-semibold">No employee data for this role</p>
-        </div>
-      ) : (
-        <>
-          <div className=" border rounded-xl overflow-hidden" style={{ background: 'var(--theme-bg-card)' }} style={{ borderColor: 'var(--theme-border)', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', background: 'var(--theme-bg-card)' }}>
-            <table className="w-full text-left text-sm">
-              <thead className="border-b" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-muted)' }}>
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Employee</th>
-                  <th className="px-6 py-4 font-semibold">Department</th>
-                  <th className="px-6 py-4 font-semibold text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
-                {paginated.map((emp, i) => {
-                  const sc = STATUS_CONFIG[emp.status] ?? STATUS_CONFIG.active
-                  const avatarGrad = AVATAR_PALETTE[i % AVATAR_PALETTE.length]
-                  return (
-                    <tr key={emp.id} className="hover: transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                            style={{ background: avatarGrad }}>
-                            {emp.avatar || emp.name.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <div className="font-bold" style={{ color: 'var(--theme-text-main)' }}>{emp.name}</div>
-                            {emp.email && <div className="text-xs mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>{emp.email}</div>}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {emp.department ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600">
-                            {emp.department}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md" style={{ background: sc.bg, color: sc.text }}>
-                          <sc.Icon size={12} /> {sc.label}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-            {filtered.length > 0 && (
-              <Pagination page={page} totalPages={totalPages} setPage={setPage} />
-            )}
-          </div>
-          {filtered.length === 0 && (
-            <div className="col-span-full text-center py-10" style={{ color: 'var(--theme-text-muted)' }}>
-              <p className="font-semibold">No employees match your search</p>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
-
-/* LOADING */
+/* ─── Loading ─────────────────────────────────────────── */
 function LoadingScreen() {
-  const steps = ['Connecting to backend…', 'Fetching analysis data…', 'Building licence hierarchy…', 'Almost ready…']
-  const [step, setStep] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => setStep(s => (s + 1) % steps.length), 700)
-    return () => clearInterval(t)
-  }, [])
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-      <div className="relative w-20 h-20">
-        <div className="absolute inset-0 rounded-full border-4" style={{ borderColor: 'var(--theme-blue-bg)' }} />
-        <div className="absolute inset-0 rounded-full border-4 border-t-blue-500 animate-spin" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Loader2 size={28} className="animate-spin" style={{ color: 'var(--theme-blue-text)' }} />
-        </div>
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+      <div className="relative w-16 h-16">
+        <div className="absolute inset-0 rounded-full border-4" style={{ borderColor: 'var(--theme-border)' }} />
+        <div className="absolute inset-0 rounded-full border-4 border-transparent animate-spin"
+          style={{ borderTopColor: '#1d6fa4' }} />
       </div>
-      <div className="text-center">
-        <p className="text-base font-semibold" style={{ color: 'var(--theme-text-main)' }}>Loading Analytics</p>
-        <p className="text-sm mt-1" style={{ color: 'var(--theme-text-muted)', minHeight: '1.5rem' }}>{steps[step]}</p>
-      </div>
+      <p className="text-sm font-medium" style={{ color: 'var(--theme-text-muted)' }}>Loading analysis results…</p>
     </div>
   )
 }
 
-/* EMPTY */
+/* ─── Empty ───────────────────────────────────────────── */
 function EmptyScreen({ onGoBack }: { onGoBack: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 max-w-lg mx-auto text-center">
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-6">
       <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: '#fef2f2' }}>
         <FileX2 size={36} style={{ color: '#ef4444' }} />
       </div>
-      <div>
+      <div className="text-center">
         <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--theme-text-main)' }}>No Data Available</h2>
-        <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>Upload your Service Catalog and Usage Report to see the licence analytics.</p>
+        <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>Upload your files to see licence analytics.</p>
       </div>
-      <button onClick={onGoBack} className="btn-primary px-6 py-3 rounded-xl text-sm font-semibold flex items-center gap-2">
+      <button onClick={onGoBack} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold"
+        style={{ background: '#1d6fa4', color: 'white' }}>
         <ArrowLeft size={15} /> Back to Upload
       </button>
     </div>
   )
 }
 
-/* MAIN PAGE */
-type Level = 'services' | 'privileges' | 'roles' | 'employees'
+/* ─── AI Insight ──────────────────────────────────────── */
+function AIInsightPanel({ privilege, service }: { privilege: Privilege; service: Service }) {
+  const [insight, setInsight] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
 
-import { useTemplate } from '../context/TemplateContext';
+  useEffect(() => {
+    let cancelled = false
+    setInsight(null)
+    setLoading(true)
+    const model = localStorage.getItem('modelSuggest') || 'deepseek'
+    fetch('http://localhost:3001/api/ai-insight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ privilegeName: privilege.name, serviceName: service.name, model }),
+    })
+      .then(r => r.json())
+      .then(d => { if (!cancelled) { setInsight(d); setLoading(false) } })
+      .catch(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [privilege.id])
 
+  function renderText(t: string) {
+    if (!t) return null
+    return t.split(/\*\*(.*?)\*\*/g).map((s, i) =>
+      i % 2 === 1 ? <strong key={i}>{s}</strong> : s
+    )
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-bg-card)' }}>
+      <div className="px-4 py-3 flex items-center gap-2"
+        style={{ background: 'linear-gradient(90deg,#4f46e5,#7c3aed)', color: 'white' }}>
+        <Brain size={16} />
+        <span className="text-sm font-bold">AI Insights</span>
+        <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: 'rgba(255,255,255,0.2)' }}>
+          {(localStorage.getItem('modelSuggest') || 'deepseek').startsWith('gemini') ? 'Gemini' : 'DeepSeek'}
+        </span>
+      </div>
+      <div className="p-4">
+        {loading && (
+          <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--theme-text-muted)' }}>
+            <Loader2 size={14} className="animate-spin" /> Analysing…
+          </div>
+        )}
+        {!loading && !insight && (
+          <p className="text-xs" style={{ color: 'var(--theme-text-muted)' }}>No AI data available.</p>
+        )}
+        {insight?.explanation && (
+          <div className="space-y-3">
+            <div className="p-3 rounded-lg border-l-4 border-blue-500 text-sm" style={{ background: 'var(--theme-bg-hover)' }}>
+              <p className="font-semibold text-xs mb-1 flex items-center gap-1" style={{ color: '#4f46e5' }}>
+                <Sparkles size={11} /> Overview
+              </p>
+              <p style={{ color: 'var(--theme-text-main)' }}>{renderText(insight.explanation)}</p>
+            </div>
+            {insight.alternative && (
+              <div className="p-3 rounded-lg border-l-4 border-orange-400 text-sm" style={{ background: 'var(--theme-bg-hover)' }}>
+                <p className="font-semibold text-xs mb-1 flex items-center gap-1" style={{ color: '#f97316' }}>
+                  <TrendingDown size={11} /> Recommendation
+                </p>
+                <p style={{ color: 'var(--theme-text-main)' }}>{renderText(insight.alternative)}</p>
+              </div>
+            )}
+            {insight.impact && (
+              <div className="p-3 rounded-lg border-l-4 border-amber-400 text-sm" style={{ background: '#fffbeb' }}>
+                <p className="font-semibold text-xs mb-1 flex items-center gap-1" style={{ color: '#d97706' }}>
+                  <AlertTriangle size={11} /> Impact
+                </p>
+                <p style={{ color: '#92400e' }}>{renderText(insight.impact)}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Panel Rail (collapsed service/privilege/role list) ─ */
+function Rail({
+  label, items, selectedId, onSelect, icon: Icon
+}: {
+  label: string
+  items: { id: string; name: string; risk?: 'high' | 'medium' | 'low'; count?: number }[]
+  selectedId: string
+  onSelect: (id: string) => void
+  icon: React.ElementType
+}) {
+  return (
+    <div className="flex flex-col h-full border-r"
+      style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-bg-card)', minWidth: 0 }}>
+      <div className="px-3 py-2 border-b flex items-center gap-1.5"
+        style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-bg-hover)' }}>
+        <Icon size={11} style={{ color: 'var(--theme-text-muted)' }} />
+        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--theme-text-muted)' }}>
+          {label}
+        </span>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {items.map(item => {
+          const isActive = item.id === selectedId
+          return (
+            <button key={item.id}
+              onClick={() => onSelect(item.id)}
+              className="w-full text-left px-3 py-2.5 flex items-start gap-2 border-b transition-colors text-xs"
+              style={{
+                borderColor: 'var(--theme-border)',
+                background: isActive ? '#1d6fa4' : 'transparent',
+                color: isActive ? 'white' : 'var(--theme-text-main)',
+              }}>
+              <span className="flex-1 font-medium leading-tight break-words" style={{ wordBreak: 'break-word' }}>
+                {item.name}
+              </span>
+              {item.risk && !isActive && (
+                <span className="mt-0.5 w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ background: RISK_CONFIG[item.risk].dot }} />
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ─── ServiceRail (column table view) ────────────────── */
+function ServiceRail({ services, selectedId, onSelect }: {
+  services: Service[]
+  selectedId: string
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div className="flex flex-col h-full border-r overflow-hidden"
+      style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-bg-card)', minWidth: 0 }}>
+      {/* Fixed header */}
+      <div style={{ borderBottom: '1px solid var(--theme-border)', background: 'var(--theme-bg-hover)' }}>
+        <table className="w-full" style={{ tableLayout: 'fixed', fontSize: '10px' }}>
+          <colgroup>
+            <col style={{ width: '32%' }} /><col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} /><col style={{ width: '14%' }} />
+            <col style={{ width: '16%' }} /><col style={{ width: '14%' }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th className="text-left px-2 py-2 font-bold uppercase tracking-wider"
+                style={{ color: 'var(--theme-text-muted)' }}>
+                <span className="flex items-center gap-1"><Package size={9} />Service</span>
+              </th>
+              <th className="text-right px-2 py-2 font-bold uppercase tracking-wider"
+                style={{ color: 'var(--theme-text-muted)' }}>Used</th>
+              <th className="text-right px-2 py-2 font-bold uppercase tracking-wider"
+                style={{ color: 'var(--theme-text-muted)' }}>Pur.</th>
+              <th className="text-right px-2 py-2 font-bold uppercase tracking-wider"
+                style={{ color: 'var(--theme-text-muted)' }}>Cost</th>
+              <th className="text-right px-2 py-2 font-bold uppercase tracking-wider"
+                style={{ color: 'var(--theme-text-muted)' }}>Over</th>
+              <th className="text-center px-2 py-2 font-bold uppercase tracking-wider"
+                style={{ color: 'var(--theme-text-muted)' }}>Risk</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+      {/* Scrollable rows */}
+      <div className="flex-1 overflow-y-auto">
+        <table className="w-full" style={{ tableLayout: 'fixed', fontSize: '10px', borderCollapse: 'collapse' }}>
+          <colgroup>
+            <col style={{ width: '32%' }} /><col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} /><col style={{ width: '14%' }} />
+            <col style={{ width: '16%' }} /><col style={{ width: '14%' }} />
+          </colgroup>
+          <tbody>
+            {services.map((svc, idx) => {
+              const isActive = svc.id === selectedId
+              const risk = svc.overProvisioned > 0 ? (svc.overProvisioned > 500 ? 'high' : 'medium') : 'low'
+              const rc = RISK_CONFIG[risk]
+              const purchased = svc.subscribedQuantity ?? svc.licenseCount
+              return (
+                <tr key={svc.id}
+                  onClick={() => onSelect(svc.id)}
+                  className="cursor-pointer transition-colors"
+                  style={{
+                    background: isActive ? '#1d6fa4' : idx % 2 === 0 ? 'var(--theme-bg-card)' : 'var(--theme-bg-hover)',
+                    borderBottom: '1px solid var(--theme-border)',
+                  }}>
+                  <td className="px-2 py-1.5 font-semibold" style={{ color: isActive ? 'white' : 'var(--theme-text-main)', wordBreak: 'break-word', lineHeight: '1.3' }}>
+                    {svc.overProvisioned > 0 && <span style={{ color: isActive ? '#fcd34d' : '#ef4444' }}>⚠ </span>}
+                    {svc.name}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-mono tabular-nums"
+                    style={{ color: isActive ? 'rgba(255,255,255,0.9)' : 'var(--theme-text-main)' }}>
+                    {svc.licenseCount.toLocaleString()}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-mono tabular-nums"
+                    style={{ color: isActive ? 'rgba(255,255,255,0.65)' : 'var(--theme-text-muted)' }}>
+                    {purchased.toLocaleString()}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-semibold"
+                    style={{ color: isActive ? 'rgba(255,255,255,0.9)' : 'var(--theme-text-main)' }}>
+                    {fmtCost(svc.totalCost)}
+                  </td>
+                  {/* Over / Spare column */}
+                  <td className="px-2 py-1.5 text-right font-bold tabular-nums">
+                    {(() => {
+                      const diff = svc.licenseCount - purchased
+                      if (diff > 0) return (
+                        <span style={{ color: isActive ? '#fca5a5' : '#dc2626' }}>+{diff.toLocaleString()}</span>
+                      )
+                      if (diff < 0) return (
+                        <span style={{ color: isActive ? '#86efac' : '#059669' }}>{diff.toLocaleString()}</span>
+                      )
+                      return <span style={{ color: 'var(--theme-text-muted)' }}>0</span>
+                    })()}
+                  </td>
+                  <td className="px-2 py-1.5 text-center">
+                    <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded"
+                      style={{
+                        background: isActive ? 'rgba(255,255,255,0.2)' : rc.bg,
+                        color: isActive ? 'white' : rc.text,
+                      }}>{rc.label}</span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Services Grid ───────────────────────────────────── */
+function ServicesGrid({ services, onSelect }: { services: Service[]; onSelect: (s: Service) => void }) {
+  return (
+    <div className="flex-1 overflow-y-auto p-5">
+      <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--theme-text-muted)' }}>
+        {services.length} Services — click to explore
+      </h2>
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+        {services.map(svc => {
+          const risk = svc.overProvisioned > 0 ? (svc.overProvisioned > 500 ? 'high' : 'medium') : 'low'
+          const rc = RISK_CONFIG[risk]
+          return (
+            <button key={svc.id} onClick={() => onSelect(svc)}
+              className="text-left rounded-xl border p-4 transition-all hover:shadow-lg hover:-translate-y-0.5 group"
+              style={{ background: 'var(--theme-bg-card)', borderColor: 'var(--theme-border)' }}>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="text-2xl leading-none">{svc.icon}</div>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase"
+                  style={{ background: rc.bg, color: rc.text, border: `1px solid ${rc.border}` }}>
+                  {rc.label}
+                </span>
+              </div>
+              <p className="text-xs font-bold leading-snug mb-2 group-hover:text-blue-600 transition-colors"
+                style={{ color: 'var(--theme-text-main)' }}>
+                {svc.name}
+              </p>
+              {svc.vendor && (
+                <p className="text-[10px] mb-2" style={{ color: 'var(--theme-text-muted)' }}>{svc.vendor}</p>
+              )}
+              <div className="flex items-center justify-between text-[10px] mb-2" style={{ color: 'var(--theme-text-muted)' }}>
+                <span>{fmtNum(svc.licenseCount)} licences</span>
+                <span>{svc.privilegeCount} privileges</span>
+              </div>
+              <UsageBar used={svc.licenseCount} total={svc.subscribedQuantity ?? svc.licenseCount} color={svc.color} />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Privileges Grid ─────────────────────────────────── */
+function PrivilegesGrid({ privileges, service, onSelect }: {
+  privileges: Privilege[]
+  service: Service
+  onSelect: (p: Privilege) => void
+}) {
+  return (
+    <div className="flex-1 overflow-y-auto p-5">
+      <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--theme-text-muted)' }}>
+        {privileges.length} Privileges — click to explore
+      </h2>
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+        {privileges.map(priv => (
+          <button key={priv.id} onClick={() => onSelect(priv)}
+            className="text-left rounded-xl border p-4 transition-all hover:shadow-lg hover:-translate-y-0.5 group"
+            style={{ background: 'var(--theme-bg-card)', borderColor: 'var(--theme-border)' }}>
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ background: 'var(--theme-blue-bg)' }}>
+                <Shield size={14} style={{ color: 'var(--theme-blue-text)' }} />
+              </div>
+              <RiskBadge risk={priv.risk} />
+            </div>
+            <p className="text-xs font-bold leading-snug mb-1 group-hover:text-blue-600 transition-colors"
+              style={{ color: 'var(--theme-text-main)' }}>
+              {priv.name}
+            </p>
+            {priv.description && (
+              <p className="text-[10px] mb-2 leading-relaxed" style={{ color: 'var(--theme-text-muted)' }}>
+                {priv.description.length > 80 ? priv.description.slice(0, 80) + '…' : priv.description}
+              </p>
+            )}
+            <div className="flex items-center justify-between text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>
+              <span>{priv.roles?.length ?? 0} roles</span>
+              <span>{fmtCost(priv.totalCost)}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ─── Roles Grid + AI ─────────────────────────────────── */
+function RolesAndAI({ roles, privilege, service, onSelect }: {
+  roles: Role[]
+  privilege: Privilege
+  service: Service
+  onSelect: (r: Role) => void
+}) {
+  return (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      {/* Roles */}
+      <div>
+        <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--theme-text-muted)' }}>
+          {roles.length} Roles — click to see employees
+        </h2>
+        <div className="grid gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+          {roles.map(role => {
+            const pct = role.licenseTotal > 0 ? Math.round((role.licenseUsed / role.licenseTotal) * 100) : 0
+            const isHot = pct >= 95
+            return (
+              <button key={role.id} onClick={() => onSelect(role)}
+                className="text-left rounded-xl border p-3.5 transition-all hover:shadow-md hover:-translate-y-0.5 group"
+                style={{ background: 'var(--theme-bg-card)', borderColor: isHot ? '#fecaca' : 'var(--theme-border)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style={{ background: isHot ? '#fef2f2' : 'var(--theme-blue-bg)' }}>
+                    <Layers size={13} style={{ color: isHot ? '#dc2626' : 'var(--theme-blue-text)' }} />
+                  </div>
+                  <div className="flex items-center gap-1 ml-auto text-[10px] font-semibold"
+                    style={{ color: 'var(--theme-text-muted)' }}>
+                    <Users size={10} />
+                    {role.employeeCount}
+                  </div>
+                </div>
+                <p className="text-xs font-bold leading-snug mb-2 group-hover:text-blue-600 transition-colors"
+                  style={{ color: 'var(--theme-text-main)' }}>
+                  {role.name}
+                </p>
+                <UsageBar used={role.licenseUsed} total={role.licenseTotal} color={service.color} />
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* AI Insights */}
+      <AIInsightPanel privilege={privilege} service={service} />
+    </div>
+  )
+}
+
+/* ─── Employees Table ─────────────────────────────────── */
+function EmployeesPanel({ employees, role, service }: {
+  employees: Employee[]
+  role: Role
+  service: Service
+}) {
+  return (
+    <div className="flex-1 overflow-y-auto p-4">
+      <h2 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--theme-text-muted)' }}>
+        {employees.length} Employees in {role.name}
+      </h2>
+      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-bg-card)' }}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: 'var(--theme-bg-hover)', borderBottom: '1px solid var(--theme-border)' }}>
+              <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--theme-text-muted)' }}>Employee</th>
+              <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--theme-text-muted)' }}>Status</th>
+              <th className="text-left px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--theme-text-muted)' }}>Email</th>
+            </tr>
+          </thead>
+          <tbody>
+            {employees.map((emp, idx) => {
+              const sc = STATUS_CONFIG[emp.status] ?? STATUS_CONFIG.inactive
+              const { Icon: StatusIcon } = sc
+              const grad = AVATAR_PALETTE[idx % AVATAR_PALETTE.length]
+              return (
+                <tr key={emp.id}
+                  className="border-b transition-colors hover:opacity-80"
+                  style={{ borderColor: 'var(--theme-border)', background: idx % 2 === 0 ? 'var(--theme-bg-card)' : 'var(--theme-bg-hover)' }}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white"
+                        style={{ background: grad }}>
+                        {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </div>
+                      <span className="font-semibold text-xs" style={{ color: 'var(--theme-text-main)' }}>{emp.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: sc.bg, color: sc.text }}>
+                      <StatusIcon size={10} />{sc.label}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--theme-text-muted)' }}>{emp.email || '—'}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+/* ─── MAIN PAGE ───────────────────────────────────────── */
 export default function ResultsPage() {
-  const { activeTemplateId, setActiveTemplateId } = useTemplate();
-  const navigate  = useNavigate()
-  const [status,  setStatus]  = useState<'loading' | 'ready' | 'empty'>('loading')
-  const [result,  setResult]  = useState<ParseResult | null>(null)
-  const [level,   setLevel]   = useState<Level>('services')
-  const [selSvc,  setSelSvc]  = useState<Service   | null>(null)
+  const { activeTemplateId, setActiveTemplateId } = useTemplate()
+  const navigate = useNavigate()
+  const [status, setStatus] = useState<'loading' | 'ready' | 'empty'>('loading')
+  const [result, setResult] = useState<ParseResult | null>(null)
+
+  // Drill-down state
+  const [selSvc, setSelSvc] = useState<Service | null>(null)
   const [selPriv, setSelPriv] = useState<Privilege | null>(null)
-  const [selRole, setSelRole] = useState<Role      | null>(null)
+  const [selRole, setSelRole] = useState<Role | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -768,74 +554,174 @@ export default function ResultsPage() {
     return () => { cancelled = true }
   }, [])
 
-  function goServices()             { setLevel('services');  setSelSvc(null); setSelPriv(null); setSelRole(null) }
-  function goPrivileges(s: Service) { setSelSvc(s);  setLevel('privileges'); setSelPriv(null); setSelRole(null) }
-  function goRoles(p: Privilege)    { setSelPriv(p); setLevel('roles');      setSelRole(null) }
-  function goEmployees(r: Role)     { setSelRole(r); setLevel('employees') }
-
-  const crumbs: Crumb[] = [{ label: 'Services', icon: <BarChart3 size={12} />, onClick: goServices }]
-  if (selSvc)  crumbs.push({ label: selSvc.name,  icon: <span className="text-xs">{selSvc.icon}</span>, onClick: () => goPrivileges(selSvc) })
-  if (selPriv) crumbs.push({ label: selPriv.name, icon: <Shield size={12} />,                           onClick: () => goRoles(selPriv) })
-  if (selRole) crumbs.push({ label: selRole.name, icon: <Layers size={12} />,                           onClick: () => {} })
-
-  const pageTitle: Record<Level, string> = {
-    services:   'Licence Analytics',
-    privileges: `${selSvc?.name ?? ''} — Privileges`,
-    roles:      `${selPriv?.name ?? ''} — Roles`,
-    employees:  `${selRole?.name ?? ''} — Employees`,
+  function selectService(svc: Service) {
+    setSelSvc(svc)
+    setSelPriv(null)
+    setSelRole(null)
+  }
+  function selectPrivilege(priv: Privilege) {
+    setSelPriv(priv)
+    setSelRole(null)
+  }
+  function selectRole(role: Role) {
+    setSelRole(role)
   }
 
+  // Determine layout level: 0=services, 1=privileges, 2=roles+ai, 3=employees
+  const level = selRole ? 3 : selPriv ? 2 : selSvc ? 1 : 0
+
+  // Panel widths — use fractions so all panels share space fairly
+  // Grid template columns based on level
+  const gridCols = (() => {
+    if (level === 0) return '1fr'
+    if (level === 1) return '1.8fr 3fr'                  // services rail | privileges grid
+    if (level === 2) return '1.5fr 1.5fr 3fr'             // svc | priv | roles+ai
+    if (level === 3) return '1.6fr 1.6fr 1.6fr 2fr'    // svc | priv | roles | employees (narrower)
+    return '1fr'
+  })()
+
   return (
-    <div className={`min-h-screen flex font-sans relative results-page-wrapper layout-${activeTemplateId}`}>
-      <div className="relative z-10 w-full flex flex-col min-h-screen">
-        <Header variant="upload" />
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <button onClick={() => navigate('/upload')} className="flex items-center gap-1.5 text-sm font-semibold mb-3 transition-colors" style={{ color: 'var(--theme-text-muted)' }}>
-              <ArrowLeft size={14} /> Back to Upload
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--theme-bg-page)' }}>
+      {/* Header */}
+      <Header variant="upload" />
+
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-6 py-3 border-b"
+        style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-bg-card)' }}>
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <button onClick={() => navigate('/upload')}
+            className="flex items-center gap-1 text-xs font-semibold transition-colors hover:underline"
+            style={{ color: 'var(--theme-text-muted)' }}>
+            <ArrowLeft size={13} /> Upload
+          </button>
+          <ChevronRight size={13} style={{ color: 'var(--theme-text-light)' }} />
+          <button onClick={() => { setSelSvc(null); setSelPriv(null); setSelRole(null) }}
+            className="text-xs font-bold transition-colors hover:underline"
+            style={{ color: selSvc ? 'var(--theme-text-muted)' : 'var(--theme-text-main)' }}>
+            Licence Analytics
+          </button>
+          {selSvc && <>
+            <ChevronRight size={13} style={{ color: 'var(--theme-text-light)' }} />
+            <button onClick={() => { setSelPriv(null); setSelRole(null) }}
+              className="text-xs font-bold truncate max-w-[160px] transition-colors hover:underline"
+              style={{ color: selPriv ? 'var(--theme-text-muted)' : 'var(--theme-text-main)' }}>
+              {selSvc.name}
             </button>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: 'var(--theme-text-main)' }}>
-              {status === 'loading' ? 'Loading…' : pageTitle[level]}
-            </h1>
-          </div>
+          </>}
+          {selPriv && <>
+            <ChevronRight size={13} style={{ color: 'var(--theme-text-light)' }} />
+            <button onClick={() => setSelRole(null)}
+              className="text-xs font-bold truncate max-w-[160px] transition-colors hover:underline"
+              style={{ color: selRole ? 'var(--theme-text-muted)' : 'var(--theme-text-main)' }}>
+              {selPriv.name}
+            </button>
+          </>}
+          {selRole && <>
+            <ChevronRight size={13} style={{ color: 'var(--theme-text-light)' }} />
+            <span className="text-xs font-bold truncate max-w-[160px]" style={{ color: 'var(--theme-text-main)' }}>
+              {selRole.name}
+            </span>
+          </>}
+        </div>
+
+        {/* Right controls */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           {status === 'ready' && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border" style={{ background: 'var(--theme-bg-card)', borderColor: 'var(--theme-border)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <LayoutTemplate size={15} style={{ color: 'var(--theme-text-muted)' }} />
-                <select 
-                  value={activeTemplateId} 
-                  onChange={(e) => setActiveTemplateId(e.target.value)}
-                  className="text-sm font-semibold bg-transparent outline-none cursor-pointer"
-                  style={{ color: 'var(--theme-text-main)' }}
-                >
-                  <option value="t2">Standard A4</option>
-                  <option value="t3">Dark Mode Analytics</option>
-                  <option value="t5">Minimalist Data</option>
-                  <option value="t7">Enterprise Dashboard</option>
-                  <option value="t1">Executive Summary Book</option>
+            <>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border"
+                style={{ background: 'var(--theme-bg-hover)', borderColor: 'var(--theme-border)' }}>
+                <LayoutTemplate size={13} style={{ color: 'var(--theme-text-muted)' }} />
+                <select value={activeTemplateId} onChange={e => setActiveTemplateId(e.target.value)}
+                  className="text-xs font-semibold bg-transparent outline-none cursor-pointer"
+                  style={{ color: 'var(--theme-text-main)' }}>
+                  <option value="t2">Standard</option>
+                  <option value="t3">Dark Mode</option>
+                  <option value="t5">Minimal</option>
+                  <option value="t7">Enterprise</option>
+                  <option value="t1">Executive</option>
                 </select>
               </div>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:shadow-md"
-                style={{ background: 'var(--theme-bg-card)', color: 'var(--theme-text-main)', border: '1px solid var(--theme-border)', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <Download size={15} /> Export Report
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style={{ background: '#1d6fa4', color: 'white' }}>
+                <Download size={13} /> Export
               </button>
-            </div>
+            </>
           )}
         </div>
-        {status === 'ready' && crumbs.length > 1 && <Breadcrumb crumbs={crumbs} />}
-        {status === 'loading' && <LoadingScreen />}
-        {status === 'empty'   && <EmptyScreen onGoBack={() => navigate('/upload')} />}
-        {status === 'ready' && result && (
-          <>
-            {level === 'services'   && <ServicesView   result={result}     onSelectService={goPrivileges} />}
-            {level === 'privileges' && selSvc   && <PrivilegesView service={selSvc}    onSelectPrivilege={goRoles} />}
-            {level === 'roles'      && selPriv && selSvc && <RolesView privilege={selPriv} service={selSvc} onSelectRole={goEmployees} />}
-            {level === 'employees'  && selRole && selSvc && <EmployeesView role={selRole} service={selSvc} />}
-          </>
-        )}
-        </main>
       </div>
+
+      {/* Main content */}
+      {status === 'loading' && <LoadingScreen />}
+      {status === 'empty' && <EmptyScreen onGoBack={() => navigate('/upload')} />}
+      {status === 'ready' && result && (
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {/* Cascading Panels */}
+          <div
+            className="flex-1 min-h-0 overflow-hidden"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: gridCols,
+              transition: 'grid-template-columns 0.35s cubic-bezier(0.4,0,0.2,1)',
+            }}>
+
+            {/* Panel 0: Services */}
+            {level === 0 ? (
+              <ServicesGrid services={result.services} onSelect={selectService} />
+            ) : (
+              <ServiceRail
+                services={result.services}
+                selectedId={selSvc?.id ?? ''}
+                onSelect={id => {
+                  const s = result.services.find(s => s.id === id)
+                  if (s) selectService(s)
+                }}
+              />
+            )}
+
+            {/* Panel 1: Privileges */}
+            {level >= 1 && selSvc && (
+              level === 1 ? (
+                <PrivilegesGrid privileges={selSvc.privileges} service={selSvc} onSelect={selectPrivilege} />
+              ) : (
+                <Rail
+                  label="Privileges"
+                  icon={Shield}
+                  items={(selSvc.privileges).map(p => ({ id: p.id, name: p.name, risk: p.risk }))}
+                  selectedId={selPriv?.id ?? ''}
+                  onSelect={id => {
+                    const p = selSvc.privileges.find(p => p.id === id)
+                    if (p) selectPrivilege(p)
+                  }}
+                />
+              )
+            )}
+
+            {/* Panel 2: Roles + AI */}
+            {level >= 2 && selPriv && selSvc && (
+              level === 2 ? (
+                <RolesAndAI roles={selPriv.roles} privilege={selPriv} service={selSvc} onSelect={selectRole} />
+              ) : (
+                <Rail
+                  label="Roles"
+                  icon={Layers}
+                  items={(selPriv.roles).map(r => ({ id: r.id, name: r.name, count: r.employeeCount }))}
+                  selectedId={selRole?.id ?? ''}
+                  onSelect={id => {
+                    const r = selPriv.roles.find(r => r.id === id)
+                    if (r) selectRole(r)
+                  }}
+                />
+              )
+            )}
+
+            {/* Panel 3: Employees */}
+            {level === 3 && selRole && selSvc && (
+              <EmployeesPanel employees={selRole.employees} role={selRole} service={selSvc} />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
