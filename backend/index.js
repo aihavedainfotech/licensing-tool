@@ -287,7 +287,19 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
   for (const row of validRows) {
     const svc = (row.SERVICE || '').trim()
     const user = (row.USER_LOGIN || '').trim()
+    const role = (row.ROLE_NAME || '').trim()
     if (!svc || !user) continue
+
+    let isActive = true;
+    if (activeStatusMap.size > 0) {
+      const normalizedRole = role.toLowerCase().replace(/_/g, ' ');
+      const key = `${user.toLowerCase()}|${normalizedRole}`;
+      if (activeStatusMap.has(key)) {
+        isActive = activeStatusMap.get(key);
+      }
+    }
+    if (!isActive) continue;
+
     if (!svcUserMap.has(svc)) svcUserMap.set(svc, new Set())
     svcUserMap.get(svc).add(user)
   }
@@ -370,6 +382,9 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
     
     let unitCost = 0;
     let finalSku = sku;
+    let minQty = 1;
+    let metric = '';
+    
     if (Array.isArray(costData)) {
       for (const cd of costData) {
         // More forgiving name matching logic
@@ -382,10 +397,14 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
         ) {
           unitCost = parseFloat(cd.cost) || 0;
           if (cd.partNumber) finalSku = cd.partNumber;
+          if (cd.minimumQuantity) minQty = parseInt(cd.minimumQuantity, 10) || 1;
+          if (cd.metric) metric = cd.metric;
           break;
         }
       }
     }
+    
+    if (minQty < 1) minQty = 1;
     
     if (subscribedQuantityMap.size > 0) {
       if (!subscribedQuantityMap.has(finalSku)) {
@@ -396,10 +415,17 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
         continue;
       }
     }
-    const totalCost = licenseCount * unitCost;
+
+    const billingUnits = licenseCount > 0 ? Math.ceil(licenseCount / minQty) : 0;
+    const billableQuantity = billingUnits * minQty;
+    const totalCost = billingUnits * unitCost;
 
     const subscribedQuantity = subscribedQuantityMap.has(finalSku) ? subscribedQuantityMap.get(finalSku) : undefined;
-    const overProvisioned = subscribedQuantity !== undefined ? Math.max(0, licenseCount - subscribedQuantity) : 0;
+    const overProvisioned = subscribedQuantity !== undefined ? Math.max(0, billableQuantity - subscribedQuantity) : 0;
+    
+    // Calculate the actual cost of the over-provisioned units
+    const overageBillingUnits = overProvisioned > 0 ? Math.ceil(overProvisioned / minQty) : 0;
+    const overageCost = overageBillingUnits * unitCost;
 
     services.push({
       id:              svcName.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
@@ -411,6 +437,12 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
       bgGradient:      palette.bg,
       totalCost:       totalCost,
       licenseCount,
+      billableQuantity,
+      billingUnits,
+      minimumQuantity: minQty,
+      metric,
+      unitCost,
+      overageCost,
       privilegeCount:  privileges.length,
       overProvisioned: overProvisioned,
       subscribedQuantity,

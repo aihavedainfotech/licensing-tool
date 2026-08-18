@@ -34,7 +34,7 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
       {/* Right — Badges + icons */}
       <div className="flex items-center gap-3">
         <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-          style={{ background: '#e8f4fc', color: '#1d6fa4' }}>
+          style={{ background: '#f7eee6', color: '#ba6017' }}>
           <BarChart3 size={12} />
           AI Analytics
         </span>
@@ -69,7 +69,7 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
           <Settings size={16} />
         </button>
         <button className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-          style={{ background: 'linear-gradient(135deg, #1d6fa4, #00b4d8)' }}>
+          style={{ background: 'linear-gradient(135deg, #ba6017, #d47e3b)' }}>
           <User size={14} />
         </button>
       </div>

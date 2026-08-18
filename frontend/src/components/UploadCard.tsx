@@ -193,11 +193,11 @@ export default function UploadCard({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div className="flex-1 min-w-0 pr-4">
+      <div className="flex-1 min-w-0 pr-4 pl-2">
         {cardState === 'idle' || cardState === 'dragging' ? (
           <>
-            <h3 className="font-bold text-[15px] text-slate-800">{title}</h3>
-            <p className="text-[13px] text-slate-500 mt-0.5">{description}</p>
+            <h3 className="font-bold text-[16px]" style={{ color: '#31231a' }}>{title}</h3>
+            <p className="text-[13px] mt-0.5 font-medium" style={{ color: '#6d5f53' }}>{description}</p>
           </>
         ) : cardState === 'uploading' ? (
           <div className="flex flex-col gap-2">
@@ -225,13 +225,14 @@ export default function UploadCard({
         ) : null}
       </div>
 
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 pr-2">
         {(cardState === 'idle' || cardState === 'dragging' || cardState === 'error') && (
           <button 
             onClick={() => inputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[14px] font-bold transition-colors hover:bg-black/5"
+            style={{ border: '1px solid #efebe4', color: '#31231a' }}
           >
-            <Upload size={16} /> Choose File
+            <Upload size={16} style={{ color: '#6d5f53' }} /> Choose File
           </button>
         )}
         {cardState === 'uploading' && (
