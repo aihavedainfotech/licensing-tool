@@ -38,6 +38,12 @@ export interface Service {
   bgGradient: string
   totalCost: number
   licenseCount: number
+  billableQuantity?: number
+  billingUnits?: number
+  minimumQuantity?: number
+  metric?: string
+  unitCost?: number
+  overageCost?: number
   privilegeCount: number
   overProvisioned: number
   subscribedQuantity?: number

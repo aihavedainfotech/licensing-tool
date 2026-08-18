@@ -51,7 +51,7 @@ export default function UploadProgress({
         <span className="text-xs font-medium" style={{ color: '#475569' }}>
           Uploading...
         </span>
-        <span className="text-sm font-700" style={{ color: '#1d6fa4', fontWeight: 700 }}>
+        <span className="text-sm font-700" style={{ color: '#ba6017', fontWeight: 700 }}>
           {pct}%
         </span>
       </div>
