@@ -10,11 +10,8 @@ Currently, two official plugins are available:
 ## React Compiler
 
 The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
 ## Expanding the Oxlint configuration
-
 If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
 ```json
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
@@ -28,5 +25,4 @@ If you are developing a production application, we recommend enabling type-aware
   }
 }
 ```
-
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.

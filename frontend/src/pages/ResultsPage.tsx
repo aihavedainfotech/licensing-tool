@@ -6,7 +6,7 @@ import {
   Download, Loader2, FileX2,
   BarChart3, Key, Sparkles, Brain, LayoutTemplate,
   ChevronLeft, Package, TrendingUp, TrendingDown,
-  Building2, LineChart
+  Building2, LineChart, Search
 } from 'lucide-react'
 import Header from '../components/Header'
 import type { Service, Privilege, Role, Employee, ParseResult } from '../types'
@@ -731,6 +731,15 @@ export default function ResultsPage() {
 
         {/* Right controls */}
         <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="relative mr-2 hidden sm:block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={14} style={{ color: '#8a7d71' }} />
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              className="pl-8 pr-3 py-1.5 rounded-lg text-[13px] border focus:outline-none w-48"
+              style={{ backgroundColor: '#ffffff', borderColor: '#efebe4', color: '#31231a' }}
+            />
+          </div>
           {status === 'ready' && result && (
             <>
               {(() => {

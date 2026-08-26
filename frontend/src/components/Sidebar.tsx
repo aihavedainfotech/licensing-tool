@@ -9,10 +9,12 @@ import {
   Triangle,
   HelpCircle
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 export default function Sidebar() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const currentPath = location.pathname
 
   return (
     <aside className="w-64 flex flex-col h-screen shrink-0 sticky top-0 left-0 overflow-y-auto" style={{ backgroundColor: '#ffffff', borderRight: '1px solid #efebe4' }}>
@@ -28,24 +30,24 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-4 py-4 flex flex-col gap-1.5">
-        <button onClick={() => navigate('/upload')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-colors" style={{ background: '#f9efe6', color: '#c16722' }}>
-          <Home size={18} strokeWidth={2.5} />
+        <button onClick={() => navigate('/upload')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-colors ${(currentPath === '/upload' || currentPath === '/') ? '' : 'hover:bg-black/5'}`} style={(currentPath === '/upload' || currentPath === '/') ? { background: '#f9efe6', color: '#c16722' } : { color: '#31231a' }}>
+          <Home size={18} strokeWidth={(currentPath === '/upload' || currentPath === '/') ? 2.5 : 2} />
           Uploads
         </button>
-        <button onClick={() => navigate('/help')} className="flex items-center w-full text-left gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-colors hover:bg-black/5" style={{ color: '#31231a' }}>
-          <HelpCircle size={18} />
+        <button onClick={() => navigate('/help')} className={`flex items-center w-full text-left gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-colors ${currentPath.startsWith('/help') ? '' : 'hover:bg-black/5'}`} style={currentPath.startsWith('/help') ? { background: '#f9efe6', color: '#c16722' } : { color: '#31231a' }}>
+          <HelpCircle size={18} strokeWidth={currentPath.startsWith('/help') ? 2.5 : 2} />
           Help
         </button>
-        <button onClick={() => navigate('/templates')} className="flex items-center w-full text-left gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-colors hover:bg-black/5" style={{ color: '#31231a' }}>
-          <LayoutTemplate size={18} />
+        <button onClick={() => navigate('/templates')} className={`flex items-center w-full text-left gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-colors ${currentPath.startsWith('/templates') ? '' : 'hover:bg-black/5'}`} style={currentPath.startsWith('/templates') ? { background: '#f9efe6', color: '#c16722' } : { color: '#31231a' }}>
+          <LayoutTemplate size={18} strokeWidth={currentPath.startsWith('/templates') ? 2.5 : 2} />
           Templates
         </button>
         <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-colors hover:bg-black/5" style={{ color: '#31231a' }}>
           <LineChart size={18} />
           Insights
         </a>
-        <button onClick={() => navigate('/config')} className="flex items-center w-full text-left gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-colors hover:bg-black/5" style={{ color: '#31231a' }}>
-          <Settings size={18} />
+        <button onClick={() => navigate('/config')} className={`flex items-center w-full text-left gap-3 px-4 py-3 rounded-xl font-bold text-[14px] transition-colors ${currentPath.startsWith('/config') ? '' : 'hover:bg-black/5'}`} style={currentPath.startsWith('/config') ? { background: '#f9efe6', color: '#c16722' } : { color: '#31231a' }}>
+          <Settings size={18} strokeWidth={currentPath.startsWith('/config') ? 2.5 : 2} />
           Settings
         </button>
       </nav>
