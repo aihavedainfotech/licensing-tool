@@ -143,9 +143,7 @@ export default function UploadPage() {
                 <AnalyzeButton uploadedCount={uploadedCount} />
               </div>
               
-              <p className="text-[13px] text-center ml-12 mt-4 font-bold flex justify-center items-center gap-2" style={{ color: '#31231a' }}>
-                <ShieldCheck size={16} style={{ color: '#ba6017' }} /> AI will analyze your documents and generate intelligent insights.
-              </p>
+
             </div>
           </div>
 
