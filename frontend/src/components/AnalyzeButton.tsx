@@ -82,7 +82,7 @@ export default function AnalyzeButton({ uploadedCount }: AnalyzeButtonProps) {
       <button
         onClick={handleClick}
         disabled={!isEnabled}
-        className="w-full flex items-center justify-center gap-2 px-10 py-4 rounded-xl text-[16px] font-bold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-[#ba6017] hover:bg-[#a65615] shadow-sm"
+        className="w-full flex items-center justify-center gap-2 px-10 py-4 rounded-xl text-[16px] font-bold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 shadow-sm"
         style={{ fontSize: '15px', letterSpacing: '0.01em' }}
       >
         {processing ? (
