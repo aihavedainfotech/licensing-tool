@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Info, CheckCircle2, UploadCloud, Trash2, Save, FileText, Loader2, AlertCircle, Settings, BookOpen, ShieldCheck, Cpu } from 'lucide-react';
+import { Info, CheckCircle2, UploadCloud, Trash2, Save, FileText, Loader2, AlertCircle, Settings, BookOpen, ShieldCheck, Cpu, Database, Eye, EyeOff, Wifi, WifiOff } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 
 interface PrivilegeConfig {
@@ -25,7 +25,17 @@ export default function ConfigUploadPage() {
   const [existingConfig, setExistingConfig] = useState<PrivilegeConfig[] | null>(null);
   const [jobProgress, setJobProgress] = useState<string>('');
   
-  const [activeTab, setActiveTab] = useState<'models' | 'documents'>('models');
+  const [activeTab, setActiveTab] = useState<'models' | 'documents' | 'oracle'>('models');
+
+  // Oracle credentials state
+  const [oracleHost, setOracleHost] = useState('');
+  const [oracleUsername, setOracleUsername] = useState('');
+  const [oraclePassword, setOraclePassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [oracleSaving, setOracleSaving] = useState(false);
+  const [oracleTesting, setOracleTesting] = useState(false);
+  const [oracleTestResult, setOracleTestResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [oracleCredsSaved, setOracleCredsSaved] = useState(false);
 
   const [modelExtract, setModelExtract] = useState('deepseek-chat');
   const [modelInsight, setModelInsight] = useState('deepseek-chat');
@@ -52,6 +62,19 @@ export default function ConfigUploadPage() {
       .catch(() => {
         // Not found, ignore
       });
+
+    // Load Oracle credentials from backend
+    fetch('http://localhost:3001/api/settings/oracle-credentials')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          setOracleHost(data.host || '');
+          setOracleUsername(data.username || '');
+          setOraclePassword(data.password || '');
+          setOracleCredsSaved(true);
+        }
+      })
+      .catch(() => {});
 
     // Load model preferences
     setModelExtract(localStorage.getItem('modelExtract') || 'deepseek-chat');
@@ -357,10 +380,185 @@ export default function ConfigUploadPage() {
             Document Configuration
             {activeTab === 'documents' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />}
           </button>
+          <button 
+            onClick={() => setActiveTab('oracle')}
+            className={`pb-3 text-sm font-bold transition-colors relative flex items-center gap-1.5 ${activeTab === 'oracle' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}
+          >
+            <Database size={14} />
+            Oracle Connection
+            {oracleCredsSaved && <span className="ml-1 w-2 h-2 rounded-full bg-emerald-500 inline-block" title="Credentials saved" />}
+            {activeTab === 'oracle' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />}
+          </button>
         </div>
+
+        {/* Oracle Connection Tab */}
+        {activeTab === 'oracle' && (
+          <div className="animate-fade-in">
+            <h2 className="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+              <Database size={20} className="text-blue-600" />
+              Oracle Fusion Connection
+            </h2>
+            <p className="text-sm text-slate-500 mb-6">Enter your Oracle Fusion credentials to enable the <strong>Clone to Oracle</strong> feature from the Results page.</p>
+
+            <div className="max-w-xl flex flex-col gap-5">
+
+              {/* Status Banner */}
+              {oracleTestResult && (
+                <div className={`rounded-xl px-4 py-3 flex items-center gap-3 text-sm font-medium border ${
+                  oracleTestResult.ok
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                    : 'bg-red-50 border-red-200 text-red-700'
+                }`}>
+                  {oracleTestResult.ok ? <Wifi size={16} /> : <WifiOff size={16} />}
+                  {oracleTestResult.message}
+                </div>
+              )}
+
+              {/* Oracle Host */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Oracle Fusion Host URL</label>
+                <input
+                  type="url"
+                  value={oracleHost}
+                  onChange={e => setOracleHost(e.target.value)}
+                  placeholder="https://your-company.fa.us2.oraclecloud.com"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-slate-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Your Oracle Cloud instance base URL — no trailing slash</p>
+              </div>
+
+              {/* Username */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Username</label>
+                <input
+                  type="text"
+                  value={oracleUsername}
+                  onChange={e => setOracleUsername(e.target.value)}
+                  placeholder="oracle_admin@yourcompany.com"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-slate-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Oracle Security Console admin account</p>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={oraclePassword}
+                    onChange={e => setOraclePassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 pr-10 text-sm bg-slate-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(p => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3 pt-1">
+                {/* Test Connection */}
+                <button
+                  onClick={async () => {
+                    if (!oracleHost || !oracleUsername || !oraclePassword) {
+                      setOracleTestResult({ ok: false, message: 'Please fill in all fields before testing.' });
+                      return;
+                    }
+                    setOracleTesting(true);
+                    setOracleTestResult(null);
+                    try {
+                      const res = await fetch('http://localhost:3001/api/settings/oracle-credentials/test', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ host: oracleHost, username: oracleUsername, password: oraclePassword })
+                      });
+                      const data = await res.json();
+                      setOracleTestResult(res.ok
+                        ? { ok: true, message: '✅ Connected to Oracle successfully!' }
+                        : { ok: false, message: `❌ ${data.error || 'Connection failed. Check your credentials.'}` }
+                      );
+                    } catch {
+                      setOracleTestResult({ ok: false, message: '❌ Network error — could not reach Oracle host.' });
+                    } finally {
+                      setOracleTesting(false);
+                    }
+                  }}
+                  disabled={oracleTesting}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition disabled:opacity-50"
+                >
+                  {oracleTesting ? <Loader2 size={15} className="animate-spin" /> : <Wifi size={15} />}
+                  Test Connection
+                </button>
+
+                {/* Save Credentials */}
+                <button
+                  onClick={async () => {
+                    if (!oracleHost || !oracleUsername || !oraclePassword) {
+                      showToast('Please fill in all fields.', 'error');
+                      return;
+                    }
+                    setOracleSaving(true);
+                    try {
+                      const res = await fetch('http://localhost:3001/api/settings/oracle-credentials', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ host: oracleHost, username: oracleUsername, password: oraclePassword })
+                      });
+                      if (!res.ok) throw new Error('Save failed');
+                      setOracleCredsSaved(true);
+                      showToast('Oracle credentials saved successfully!');
+                    } catch (err: any) {
+                      showToast(err.message || 'Failed to save credentials', 'error');
+                    } finally {
+                      setOracleSaving(false);
+                    }
+                  }}
+                  disabled={oracleSaving}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 transition disabled:opacity-50"
+                >
+                  {oracleSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                  Save Credentials
+                </button>
+
+                {/* Clear */}
+                {oracleCredsSaved && (
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm('Remove saved Oracle credentials?')) return;
+                      await fetch('http://localhost:3001/api/settings/oracle-credentials', { method: 'DELETE' });
+                      setOracleHost(''); setOracleUsername(''); setOraclePassword('');
+                      setOracleCredsSaved(false); setOracleTestResult(null);
+                      showToast('Oracle credentials removed.');
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border border-red-200 text-red-600 hover:bg-red-50 transition"
+                  >
+                    <Trash2 size={14} /> Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Info box */}
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs text-blue-700 flex gap-2">
+                <Info size={14} className="shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold mb-1">What these credentials are used for</p>
+                  <p>When you click <strong>"Clone to Oracle"</strong> on a role card in the Results page, these credentials are used to call the Oracle Security Console REST API to create the custom role directly in your Oracle Fusion instance.</p>
+                  <p className="mt-1">Credentials are stored securely in your S3 bucket — not in any local file.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* AI & Model Configuration */}
         {activeTab === 'models' && (
+
         <div className="mb-12 animate-fade-in">
           <h2 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Cpu size={20} className="text-indigo-600" />

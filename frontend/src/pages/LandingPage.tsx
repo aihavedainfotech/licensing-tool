@@ -63,7 +63,7 @@ function DashboardPreview() {
         padding: '14px 20px',
         borderBottom: '1px solid #f1f5f9',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        background: 'linear-gradient(90deg, #1a2b4a 0%, #1d6fa4 100%)',
+        background: 'linear-gradient(90deg, #31231a 0%, #ba6017 100%)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <AnimatedLogo size={24} />
@@ -84,7 +84,7 @@ function DashboardPreview() {
         gap: 1, background: '#f1f5f9', flexShrink: 0,
       }}>
         {[
-          { label: 'Costed Privileges',  value: '247',   sub: 'in active roles',  color: '#1d6fa4' },
+          { label: 'Costed Privileges',  value: '247',   sub: 'in active roles',  color: '#ba6017' },
           { label: 'Licences Consumed',  value: '1,840', sub: 'of 2,000 allocated', color: '#0077b6' },
           { label: 'Over-provisioned',   value: '38',    sub: 'roles flagged',     color: '#C74634' },
         ].map((k, i) => (
@@ -125,12 +125,12 @@ function DashboardPreview() {
                 height: '100%', width: mounted ? `${b.pct}%` : '0%', borderRadius: 99,
                 background: b.hot
                   ? 'linear-gradient(90deg, #ef4444, #f97316)'
-                  : 'linear-gradient(90deg, #1d6fa4, #00b4d8)',
+                  : 'linear-gradient(90deg, #ba6017, #d47e3b)',
                 transition: 'width 1.2s cubic-bezier(0.16, 1, 0.3, 1)',
               }} />
             </div>
             <span style={{ fontSize: 10, fontWeight: 700, width: 28, textAlign: 'right', flexShrink: 0,
-              color: b.hot ? '#ef4444' : '#1d6fa4',
+              color: b.hot ? '#ef4444' : '#ba6017',
               opacity: mounted ? 1 : 0, transition: 'opacity 0.6s ease 0.6s',
               transform: mounted ? 'translateX(0)' : 'translateX(-5px)' }}>
               {b.count}
@@ -148,7 +148,7 @@ function DashboardPreview() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <div style={{ width: 24, height: 6, borderRadius: 99,
-              background: 'linear-gradient(90deg,#1d6fa4,#00b4d8)' }} />
+              background: 'linear-gradient(90deg,#ba6017,#d47e3b)' }} />
             <span style={{ fontSize: 9, color: '#94a3b8' }}>Within limit</span>
           </div>
         </div>
@@ -164,7 +164,7 @@ function DashboardPreview() {
         <div style={{ display: 'flex', gap: 4 }}>
           {[1,2,3,4,5].map(n => (
             <div key={n} style={{ width: 6, height: 6, borderRadius: '50%',
-              background: n <= 4 ? '#1d6fa4' : '#e2e8f0' }} />
+              background: n <= 4 ? '#ba6017' : '#e2e8f0' }} />
           ))}
         </div>
       </div>
@@ -228,7 +228,7 @@ export default function LandingPage() {
           ))}
           <div style={{
             width: 32, height: 32, borderRadius: '50%', marginLeft: 4,
-            background: 'linear-gradient(135deg, #1d6fa4, #00b4d8)',
+            background: 'linear-gradient(135deg, #ba6017, #d47e3b)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'white', fontSize: 12, fontWeight: 700,
           }}>A</div>
@@ -280,7 +280,7 @@ export default function LandingPage() {
             Know Exactly Which<br />
             Privileges Are{' '}
             <span style={{
-              background: 'linear-gradient(130deg, #1d6fa4 0%, #0077b6 50%, #00b4d8 100%)',
+              background: 'linear-gradient(130deg, #ba6017 0%, #a65615 50%, #d47e3b 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -309,7 +309,7 @@ export default function LandingPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 30 }}>
             {points.map(p => (
               <div key={p} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <CheckCircle2 size={16} style={{ color: '#1d6fa4', marginTop: 1, flexShrink: 0 }} />
+                <CheckCircle2 size={16} style={{ color: '#ba6017', marginTop: 1, flexShrink: 0 }} />
                 <span style={{ fontSize: '0.8625rem', color: '#475569', lineHeight: 1.6 }}>{p}</span>
               </div>
             ))}
@@ -324,7 +324,7 @@ export default function LandingPage() {
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '13px 32px', borderRadius: 14,
                 fontSize: '0.9375rem', fontWeight: 700,
-                background: 'linear-gradient(135deg, #1a2b4a 0%, #1d6fa4 100%)',
+                background: 'linear-gradient(135deg, #31231a 0%, #ba6017 100%)',
                 color: 'white', border: 'none', cursor: 'pointer',
                 boxShadow: '0 6px 20px rgba(29,111,164,0.35)',
                 transition: 'all 0.25s ease',
@@ -351,7 +351,7 @@ export default function LandingPage() {
           {/* Trust */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 24 }}>
             <div style={{ display: 'flex' }}>
-              {['#1d6fa4','#0077b6','#00b4d8','#3b8fd4'].map((c, i) => (
+              {['#ba6017','#a65615','#d47e3b','#c16722'].map((c, i) => (
                 <div key={i} style={{
                   width: 26, height: 26, borderRadius: '50%',
                   background: c, border: '2px solid white',
@@ -363,7 +363,7 @@ export default function LandingPage() {
             </div>
             <span style={{ fontSize: 12, color: '#64748b' }}>
               Trusted by{' '}
-              <strong style={{ color: '#1d6fa4' }}>2,400+</strong>
+              <strong style={{ color: '#ba6017' }}>2,400+</strong>
               {' '}Oracle HCM administrators
             </span>
           </div>

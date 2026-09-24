@@ -15,7 +15,7 @@ html {
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Outfit', system-ui, sans-serif;
   background-color: #f8fafc;
   color: #1e293b;
   min-height: 100vh;
@@ -42,8 +42,8 @@ body {
 
 /* ── Selection ───────────────────────────────────────────── */
 ::selection {
-  background: rgba(29, 111, 164, 0.18);
-  color: #1a2b4a;
+  background: rgba(186, 96, 23, 0.18);
+  color: #31231a;
 }
 
 /* ── Custom Animations ───────────────────────────────────── */
@@ -58,8 +58,8 @@ body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 0.5; filter: drop-shadow(0 0 4px #00b4d8); }
-  50%       { opacity: 1;   filter: drop-shadow(0 0 12px #00b4d8); }
+  0%, 100% { opacity: 0.5; filter: drop-shadow(0 0 4px #d47e3b); }
+  50%       { opacity: 1;   filter: drop-shadow(0 0 12px #d47e3b); }
 }
 
 @keyframes data-flow {
@@ -126,7 +126,7 @@ body {
 
 /* ── Gradient Text ───────────────────────────────────────── */
 .gradient-text {
-  background: linear-gradient(135deg, #1a2b4a 0%, #1d6fa4 60%, #00b4d8 100%);
+  background: linear-gradient(135deg, #31231a 0%, #ba6017 60%, #d47e3b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -134,23 +134,23 @@ body {
 
 /* ── Primary Button ──────────────────────────────────────── */
 .btn-primary {
-  background: linear-gradient(135deg, #1d6fa4 0%, #0077b6 100%);
+  background: linear-gradient(135deg, #ba6017 0%, #a65615 100%);
   color: white;
   border: none;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 16px rgba(29, 111, 164, 0.3);
+  box-shadow: 0 4px 16px rgba(186, 96, 23, 0.3);
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(29, 111, 164, 0.45);
-  background: linear-gradient(135deg, #1a6496 0%, #005e8f 100%);
+  box-shadow: 0 8px 28px rgba(186, 96, 23, 0.45);
+  background: linear-gradient(135deg, #a65615 0%, #8f4810 100%);
 }
 
 .btn-primary:active:not(:disabled) {
   transform: translateY(0px);
-  box-shadow: 0 4px 12px rgba(29, 111, 164, 0.3);
+  box-shadow: 0 4px 12px rgba(186, 96, 23, 0.3);
 }
 
 .btn-primary:disabled {
@@ -162,22 +162,22 @@ body {
 /* ── Upload Card ─────────────────────────────────────────── */
 .upload-card {
   background: #ffffff;
-  border: 2px dashed #dbeafe;
+  border: 2px dashed #efebe4;
   border-radius: 20px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 20px rgba(29, 111, 164, 0.06);
+  box-shadow: 0 2px 20px rgba(186, 96, 23, 0.06);
 }
 
 .upload-card:hover {
-  border-color: #3b8fd4;
-  box-shadow: 0 8px 32px rgba(29, 111, 164, 0.12);
+  border-color: #d47e3b;
+  box-shadow: 0 8px 32px rgba(186, 96, 23, 0.12);
   transform: translateY(-2px);
 }
 
 .upload-card.dragging {
-  border-color: #1d6fa4;
-  background: #e8f4fc;
-  box-shadow: 0 12px 40px rgba(29, 111, 164, 0.2);
+  border-color: #ba6017;
+  background: #f7eee6;
+  box-shadow: 0 12px 40px rgba(186, 96, 23, 0.2);
   transform: scale(1.02);
 }
 
@@ -204,7 +204,7 @@ body {
 .progress-fill {
   height: 100%;
   border-radius: 100px;
-  background: linear-gradient(90deg, #1d6fa4, #00b4d8);
+  background: linear-gradient(90deg, #ba6017, #d47e3b);
   transition: width 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -232,22 +232,21 @@ body {
 
 /* ── Theming System ───────────────────────────────────────── */
 :root, .theme-default {
-  --theme-bg-page: #f8fafc;
+  --theme-bg-page: #faf8f5;
   --theme-bg-card: #ffffff;
-  --theme-bg-hover: #f1f5f9;
-  --theme-border: #e2e8f0;
-  --theme-text-main: #1a2b4a;
-  --theme-text-muted: #94a3b8;
-  --theme-text-light: #cbd5e1;
-  --theme-blue-bg: #eff6ff;
-  --theme-blue-text: #2563eb;
+  --theme-bg-hover: #fdfbf7;
+  --theme-border: #efebe4;
+  --theme-text-main: #31231a;
+  --theme-text-muted: #6d5f53;
+  --theme-text-light: #8a7d71;
+  --theme-blue-bg: #f7eee6;
+  --theme-blue-text: #ba6017;
   --theme-green-bg: #f0fdf4;
-  --theme-green-text: #059669;
-  --theme-purple-bg: #faf5ff;
-  --theme-purple-text: #7c3aed;
+  --theme-green-text: #10b981;
+  --theme-purple-bg: #f4e2d3;
+  --theme-purple-text: #ba6017;
   --layout-max-width: 1200px;
 }
-
 body.theme-dark {
   --theme-bg-page: #000000;
   --theme-bg-card: #111111;
@@ -263,7 +262,6 @@ body.theme-dark {
   --theme-purple-bg: rgba(249, 115, 22, 0.15);
   --theme-purple-text: #ea580c;
 }
-
 body.theme-minimal {
   --theme-bg-page: #ffffff;
   --theme-bg-card: #ffffff;
@@ -279,7 +277,6 @@ body.theme-minimal {
   --theme-purple-bg: transparent;
   --theme-purple-text: #111827;
 }
-
 body.theme-executive {
   --theme-bg-page: #f4f1ea;
   --theme-bg-card: #ffffff;
@@ -296,7 +293,6 @@ body.theme-executive {
   --theme-purple-text: #5e3b6b;
   --layout-max-width: 1400px;
 }
-
 body.theme-enterprise {
   --theme-bg-page: #082f49;
   --theme-bg-card: #0c4a6e;
@@ -312,20 +308,17 @@ body.theme-enterprise {
   --theme-purple-bg: rgba(14, 165, 233, 0.2);
   --theme-purple-text: #7dd3fc;
 }
-
 /* Base override */
 body {
   background-color: var(--theme-bg-page) !important;
   color: var(--theme-text-main) !important;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
-
 .results-page-wrapper {
   max-width: var(--layout-max-width);
   margin: 0 auto;
   transition: max-width 0.3s ease;
 }
-
 /* Forced Overrides for ResultsPage */
 .themed-container [style] {
   background-color: var(--theme-bg-card) !important;

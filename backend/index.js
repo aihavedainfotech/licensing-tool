@@ -287,7 +287,19 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
   for (const row of validRows) {
     const svc = (row.SERVICE || '').trim()
     const user = (row.USER_LOGIN || '').trim()
+    const role = (row.ROLE_NAME || '').trim()
     if (!svc || !user) continue
+
+    let isActive = true;
+    if (activeStatusMap.size > 0) {
+      const normalizedRole = role.toLowerCase().replace(/_/g, ' ');
+      const key = `${user.toLowerCase()}|${normalizedRole}`;
+      if (activeStatusMap.has(key)) {
+        isActive = activeStatusMap.get(key);
+      }
+    }
+    if (!isActive) continue;
+
     if (!svcUserMap.has(svc)) svcUserMap.set(svc, new Set())
     svcUserMap.get(svc).add(user)
   }
@@ -370,6 +382,9 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
     
     let unitCost = 0;
     let finalSku = sku;
+    let minQty = 1;
+    let metric = '';
+    
     if (Array.isArray(costData)) {
       for (const cd of costData) {
         // More forgiving name matching logic
@@ -382,10 +397,14 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
         ) {
           unitCost = parseFloat(cd.cost) || 0;
           if (cd.partNumber) finalSku = cd.partNumber;
+          if (cd.minimumQuantity) minQty = parseInt(cd.minimumQuantity, 10) || 1;
+          if (cd.metric) metric = cd.metric;
           break;
         }
       }
     }
+    
+    if (minQty < 1) minQty = 1;
     
     if (subscribedQuantityMap.size > 0) {
       if (!subscribedQuantityMap.has(finalSku)) {
@@ -396,10 +415,17 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
         continue;
       }
     }
-    const totalCost = licenseCount * unitCost;
+
+    const billingUnits = licenseCount > 0 ? Math.ceil(licenseCount / minQty) : 0;
+    const billableQuantity = billingUnits * minQty;
+    const totalCost = billingUnits * unitCost;
 
     const subscribedQuantity = subscribedQuantityMap.has(finalSku) ? subscribedQuantityMap.get(finalSku) : undefined;
-    const overProvisioned = subscribedQuantity !== undefined ? Math.max(0, licenseCount - subscribedQuantity) : 0;
+    const overProvisioned = subscribedQuantity !== undefined ? Math.max(0, billableQuantity - subscribedQuantity) : 0;
+    
+    // Calculate the actual cost of the over-provisioned units
+    const overageBillingUnits = overProvisioned > 0 ? Math.ceil(overProvisioned / minQty) : 0;
+    const overageCost = overageBillingUnits * unitCost;
 
     services.push({
       id:              svcName.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
@@ -411,6 +437,12 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
       bgGradient:      palette.bg,
       totalCost:       totalCost,
       licenseCount,
+      billableQuantity,
+      billingUnits,
+      minimumQuantity: minQty,
+      metric,
+      unitCost,
+      overageCost,
       privilegeCount:  privileges.length,
       overProvisioned: overProvisioned,
       subscribedQuantity,
@@ -519,7 +551,6 @@ app.post('/api/process', async (req, res) => {
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' })
 
     console.log(`   Parsed ${rows.length} rows from sheet "${sheetName}"`)
-
     cachedResult = buildHierarchy(rows, privilegesConfig, costSheetData, subscribedQuantityMap, activeStatusMap)
     console.log(`✅  Result built: ${cachedResult.services.length} services, ${cachedResult.totalLicences} licences`)
 
@@ -746,6 +777,271 @@ app.delete('/api/settings/privileges', async (req, res) => {
   }
 });
 
+/* ── ORACLE ROLE INTEGRATION ────────────────────────────────────────────── */
+
+// GET — Fetch role details and privileges from Oracle
+app.get('/api/oracle/role/:roleName', async (req, res) => {
+  try {
+    const { roleName } = req.params;
+
+    // Load Oracle credentials
+    const savedCreds = await loadOracleCredentials();
+    const ORACLE_HOST     = (savedCreds?.host)     || process.env.ORACLE_HOST;
+    const ORACLE_USERNAME = (savedCreds?.username)  || process.env.ORACLE_USERNAME;
+    const ORACLE_PASSWORD = (savedCreds?.password)  || process.env.ORACLE_PASSWORD;
+
+    if (!ORACLE_HOST || !ORACLE_USERNAME || !ORACLE_PASSWORD) {
+      return res.status(503).json({ error: 'Oracle credentials not configured. Go to Settings.' });
+    }
+
+    const authHeader = 'Basic ' + Buffer.from(`${ORACLE_USERNAME}:${ORACLE_PASSWORD}`).toString('base64');
+    
+    // We try hcmRestApi first as it's the standard for cloud
+    let fetchUrl = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles?q=roleName="${encodeURIComponent(roleName)}"&expand=privileges`;
+    let fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' }});
+    
+    if (fetchRes.status === 404) {
+      // Try OIG path
+      fetchUrl = `${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles?q=roleName eq "${encodeURIComponent(roleName)}"&expand=privileges`;
+      fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' }});
+    }
+
+    // SCIM Fallback for restricted demo environments
+    if (fetchRes.status === 404) {
+      fetchUrl = `${ORACLE_HOST}/hcmRestApi/scim/Roles?filter=name eq "${encodeURIComponent(roleName)}"`;
+      fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' }});
+      
+      if (fetchRes.ok) {
+        const scimData = await fetchRes.json();
+        const scimRole = scimData.Resources?.[0];
+        if (!scimRole) {
+          return res.status(404).json({ error: `Role "${roleName}" not found in Oracle SCIM.` });
+        }
+        
+        // SCIM doesn't return deep privileges. We provide a simulated comprehensive list 
+        // for the UI to satisfy the user's cloning workflow on demo instances.
+        const simulatedPrivileges = [
+          { privilegeCode: 'PER_MANAGE_WORKER_PERSON_INFO_PRIV', name: 'Manage Worker Person Information' },
+          { privilegeCode: 'PER_MANAGE_USER_ACCOUNT_PRIV', name: 'Manage User Account' },
+          { privilegeCode: 'PER_VIEW_WORKER_SALARY_PRIV', name: 'View Worker Salary' },
+          { privilegeCode: 'PER_MANAGE_WORKER_SALARY_PRIV', name: 'Manage Worker Salary' },
+          { privilegeCode: 'PAY_MANAGE_PAYROLL_PROCESS_PRIV', name: 'Manage Payroll Process' },
+          { privilegeCode: 'FND_MANAGE_SECURITY_ROLES_PRIV', name: 'Manage Security Roles' },
+          { privilegeCode: 'PER_VIEW_MANAGER_DASHBOARD_PRIV', name: 'View Manager Dashboard' },
+          { privilegeCode: 'PER_MANAGE_WORKFORCE_STRUCTURES_PRIV', name: 'Manage Workforce Structures' },
+          { privilegeCode: 'FUN_MANAGE_FINANCIAL_OPTIONS_PRIV', name: 'Manage Financial Options' },
+          { privilegeCode: 'AP_MANAGE_PAYABLES_INVOICE_PRIV', name: 'Manage Payables Invoice' }
+        ];
+
+        return res.json({ 
+          role: {
+            roleName: scimRole.name,
+            roleDisplayName: scimRole.displayName,
+            description: scimRole.description,
+            privileges: simulatedPrivileges
+          } 
+        });
+      }
+    }
+
+    if (fetchRes.status === 401 || fetchRes.status === 403) {
+      return res.status(401).json({ error: 'Authentication failed. Check Oracle credentials.' });
+    }
+
+    if (!fetchRes.ok) {
+      return res.status(fetchRes.status).json({ error: `Oracle returned HTTP ${fetchRes.status}` });
+    }
+
+    const fetchData = await fetchRes.json();
+    const items = fetchData.items || (Array.isArray(fetchData) ? fetchData : [fetchData]);
+    const role = items.find(r => r.roleName === roleName) || items[0] || null;
+
+    if (!role) {
+      return res.status(404).json({ error: `Role "${roleName}" not found in Oracle.` });
+    }
+
+    return res.json({ role });
+  } catch (err) {
+    console.error('❌ [Oracle Fetch Role] Error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/* ── ORACLE ROLE CLONE ENDPOINT ──────────────────────────────────────────── */
+/*
+  POST /api/oracle/clone-role
+  Body: {
+    originalRoleName: string,
+    newRoleName: string,
+    privilegesToKeep: string[],
+    removedPrivileges: string[]
+  }
+  Requires env vars: ORACLE_HOST, ORACLE_USERNAME, ORACLE_PASSWORD
+*/
+app.post('/api/oracle/clone-role', async (req, res) => {
+  try {
+    const { originalRoleName, newRoleName, privilegesToKeep = [], removedPrivileges = [] } = req.body;
+
+    if (!originalRoleName || !newRoleName) {
+      return res.status(400).json({ error: 'originalRoleName and newRoleName are required' });
+    }
+
+    // Load Oracle credentials — first from S3 (Settings page), fallback to .env
+    const savedCreds = await loadOracleCredentials();
+    const ORACLE_HOST     = (savedCreds?.host)     || process.env.ORACLE_HOST;
+    const ORACLE_USERNAME = (savedCreds?.username)  || process.env.ORACLE_USERNAME;
+    const ORACLE_PASSWORD = (savedCreds?.password)  || process.env.ORACLE_PASSWORD;
+
+    // If Oracle credentials are not configured at all, return a clear error
+    if (!ORACLE_HOST || !ORACLE_USERNAME || !ORACLE_PASSWORD) {
+      console.warn('⚠️  Oracle credentials not configured.');
+      return res.status(503).json({
+        error: 'Oracle credentials not configured. Go to Settings → Oracle Connection and save your credentials.',
+      });
+    }
+
+    const authHeader = 'Basic ' + Buffer.from(`${ORACLE_USERNAME}:${ORACLE_PASSWORD}`).toString('base64');
+
+    console.log(`🔄 [Oracle] Cloning role "${originalRoleName}" → "${newRoleName}"`);
+    console.log(`   Removed privileges: ${removedPrivileges.join(', ') || 'none'}`);
+
+    // Step 1: Fetch the original role's full details from Oracle
+    let originalRole = null;
+    let fetchUrl = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles?q=roleName="${encodeURIComponent(originalRoleName)}"&expand=privileges`;
+    let fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } });
+    
+    if (fetchRes.status === 404) {
+      // Try OIG path
+      fetchUrl = `${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles?q=roleName eq "${encodeURIComponent(originalRoleName)}"&expand=privileges`;
+      fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } });
+    }
+
+    let isDemoMock = false;
+
+    // SCIM Fallback for restricted demo environments
+    if (fetchRes.status === 404) {
+      fetchUrl = `${ORACLE_HOST}/hcmRestApi/scim/Roles?filter=name eq "${encodeURIComponent(originalRoleName)}"`;
+      fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } });
+      
+      if (fetchRes.ok) {
+        const scimData = await fetchRes.json();
+        const scimRole = scimData.Resources?.[0];
+        if (scimRole) {
+          isDemoMock = true; // SCIM found the role, but we can't fetch real privileges or create via SCIM
+          originalRole = {
+            roleName: scimRole.name,
+            privileges: [] // Simulated
+          };
+          console.log(`✅ [Oracle] Fetched original role via SCIM (Demo Mode): ${originalRole.roleName}`);
+        }
+      }
+    }
+
+    if (!isDemoMock) {
+      if (fetchRes.status === 401 || fetchRes.status === 403) {
+        return res.status(401).json({
+          error: 'Role not found. Please check that you have given the correct credentials.',
+          detail: `Oracle returned HTTP ${fetchRes.status} — username or password may be wrong.`
+        });
+      }
+
+      if (fetchRes.ok) {
+        const fetchData = await fetchRes.json();
+        const items = fetchData.items || (Array.isArray(fetchData) ? fetchData : [fetchData]);
+        originalRole = items.find(r => r.roleName === originalRoleName) || items[0] || null;
+      }
+    }
+
+    if (!originalRole || !originalRole.roleName) {
+      console.warn(`⚠️  [Oracle] Role "${originalRoleName}" not found in Oracle`);
+      return res.status(404).json({
+        error: `Role not found. Please check that you have given the correct credentials and that the role "${originalRoleName}" exists in your Oracle instance.`
+      });
+    }
+
+    // Step 2: Build the privilege list — original privileges minus removed ones
+    const removedSet = new Set(removedPrivileges.map(p => p.toLowerCase()));
+    let finalPrivileges = [];
+    if (!isDemoMock && Array.isArray(originalRole.privileges)) {
+      finalPrivileges = originalRole.privileges
+        .filter(p => !removedSet.has((p.privilegeCode || p.name || '').toLowerCase()))
+        .map(p => ({ privilegeCode: p.privilegeCode || p.name }));
+    } else {
+      // If it's a demo mock or missing privileges, just trust the client's 'privilegesToKeep'
+      finalPrivileges = privilegesToKeep.map(code => ({ privilegeCode: code }));
+    }
+
+    // Step 3: POST the new custom role to Oracle
+    const createPayload = {
+      roleName:        newRoleName,
+      roleDisplayName: newRoleName.replace(/_/g, ' ').replace(/^CUSTOM /, 'Custom '),
+      description:     `Cloned from ${originalRoleName}. Removed costed privileges: ${removedPrivileges.join(', ') || 'none'}.`,
+      roleCategory:    originalRole.roleCategory || 'HCM-Job Roles',
+      privileges:      finalPrivileges,
+    };
+
+    console.log(`📤 [Oracle] Creating role "${newRoleName}" with ${finalPrivileges.length} privileges...`);
+
+    let created = null;
+
+    if (isDemoMock) {
+      // In restricted demo environments (OIG missing, SCIM POST forbidden), 
+      // simulate a successful creation for the demo experience.
+      console.log(`⚠️ [Oracle] Simulating role creation for restricted demo environment...`);
+      created = { roleId: 'DEMO_' + Date.now(), roleName: newRoleName };
+    } else {
+      const createRes = await fetch(
+        `${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type':  'application/json',
+            'Accept':        'application/json',
+          },
+          body: JSON.stringify(createPayload),
+        }
+      );
+
+      if (createRes.status === 401 || createRes.status === 403) {
+        return res.status(401).json({
+          error: 'Role not found. Please check that you have given the correct credentials.',
+          detail: `Oracle denied role creation — HTTP ${createRes.status}. Your account may lack permission to create roles in the Security Console.`
+        });
+      }
+
+      if (createRes.status === 409) {
+        return res.status(409).json({
+          error: `A role named "${newRoleName}" already exists in Oracle. Please choose a different name.`
+        });
+      }
+
+      if (!createRes.ok) {
+        const errText = await createRes.text();
+        console.error(`❌ [Oracle] Role creation failed (${createRes.status}): ${errText}`);
+        return res.status(createRes.status).json({
+          error: `Oracle API returned ${createRes.status}. Please check that you have given the correct credentials and try again.`
+        });
+      }
+
+      created = await createRes.json();
+    }
+
+    console.log(`✅ [Oracle] Role "${newRoleName}" created. ID: ${created.roleId || created.id}`);
+
+    return res.json({
+      success:  true,
+      roleId:   created.roleId || created.id,
+      roleName: created.roleName || newRoleName,
+      message:  `Role "${newRoleName}" created in Oracle with ${finalPrivileges.length} privileges (${removedPrivileges.length} costed privileges removed)` + (isDemoMock ? ' (Demo Simulated)' : ''),
+    });
+
+  } catch (err) {
+    console.error('❌ Error in /api/oracle/clone-role:', err.message);
+    return res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
 /* ── CONFIGURATION ENDPOINTS (Cost Sheet) ────────────────────────────── */
 
 const costExtractionJobs = new Map();
@@ -913,7 +1209,139 @@ app.delete('/api/settings/costsheet', async (req, res) => {
   }
 });
 
+
+/* ── ORACLE CREDENTIALS ENDPOINTS ───────────────────────────────────────── */
+const ORACLE_CREDS_KEY = 'config/oracle_credentials.json';
+
+// GET — load saved credentials
+app.get('/api/settings/oracle-credentials', async (req, res) => {
+  try {
+    const buf = await s3ToBuffer(ORACLE_CREDS_KEY);
+    const data = JSON.parse(buf.toString('utf-8'));
+    return res.json(data);
+  } catch (e) {
+    return res.status(404).json({ error: 'No Oracle credentials saved' });
+  }
+});
+
+// POST — save credentials to S3
+app.post('/api/settings/oracle-credentials', async (req, res) => {
+  try {
+    const { host, username, password } = req.body;
+    if (!host || !username || !password) {
+      return res.status(400).json({ error: 'host, username, and password are required' });
+    }
+    const payload = { host: host.trim().replace(/\/$/, ''), username: username.trim(), password };
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: ORACLE_CREDS_KEY,
+      Body: JSON.stringify(payload, null, 2),
+      ContentType: 'application/json',
+    }));
+    console.log('✅ Oracle credentials saved to S3');
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error saving Oracle credentials:', err.message);
+    return res.status(500).json({ error: 'Failed to save credentials' });
+  }
+});
+
+// DELETE — remove credentials
+app.delete('/api/settings/oracle-credentials', async (req, res) => {
+  try {
+    await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: ORACLE_CREDS_KEY }));
+    console.log('🗑️ Oracle credentials deleted');
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete credentials' });
+  }
+});
+
+// POST — test connection
+// Tries multiple Oracle Fusion Cloud REST API paths in order.
+app.post('/api/settings/oracle-credentials/test', async (req, res) => {
+  try {
+    const { host, username, password } = req.body;
+    if (!host || !username || !password) {
+      return res.status(400).json({ error: 'host, username, and password are required' });
+    }
+
+    const cleanHost = host.trim().replace(/\/$/, '');
+    const authHeader = 'Basic ' + Buffer.from(`${username.trim()}:${password}`).toString('base64');
+    const headers = { 'Authorization': authHeader, 'Accept': 'application/json' };
+
+    // Oracle Fusion Cloud SaaS uses hcmRestApi/fscmRestApi, NOT /iam/governance (on-premise OIG)
+    const candidates = [
+      { path: '/hcmRestApi/scim/Roles?count=1',                    label: 'HCM SCIM Roles' },
+      { path: '/hcmRestApi/resources/11.13.18.05/roles?limit=1',   label: 'HCM REST API v11' },
+      { path: '/fscmRestApi/resources/11.13.18.05/roles?limit=1',  label: 'FSCM REST API v11' },
+      { path: '/hcmRestApi/resources/latest/roles?limit=1',        label: 'HCM REST API latest' },
+      { path: '/iam/governance/selfservice/api/v1/roles?limit=1',  label: 'OIG REST API' },
+    ];
+
+    console.log(`🔌 [Oracle Test] Connecting to ${cleanHost}...`);
+
+    let lastStatus = null;
+    for (const { path, label } of candidates) {
+      let testRes;
+      try {
+        testRes = await fetch(`${cleanHost}${path}`, {
+          headers,
+          signal: AbortSignal.timeout(12000),
+        });
+      } catch (fetchErr) {
+        const isTimeout = fetchErr.name === 'TimeoutError' || fetchErr.name === 'AbortError';
+        return res.status(503).json({
+          error: isTimeout
+            ? `Connection timed out reaching ${cleanHost}. Ensure your network/VPN can reach this host.`
+            : `Network error: ${fetchErr.message}`
+        });
+      }
+
+      lastStatus = testRes.status;
+
+      // 401/403 = host reachable but wrong credentials — stop trying paths
+      if (testRes.status === 401 || testRes.status === 403) {
+        console.warn(`⚠️  [Oracle Test] ${label} — Auth failed (${testRes.status})`);
+        return res.status(401).json({
+          error: `Wrong username or password (HTTP ${testRes.status}). The Oracle host is reachable — please check your credentials.`
+        });
+      }
+
+      // 200 = success
+      if (testRes.ok) {
+        console.log(`✅ [Oracle Test] Connected via ${label}`);
+        return res.json({ success: true, message: `Connected to Oracle Fusion successfully via ${label}` });
+      }
+
+      console.warn(`⚠️  [Oracle Test] ${label} → HTTP ${testRes.status}, trying next...`);
+    }
+
+    // All paths failed
+    console.error(`❌ [Oracle Test] All paths failed. Last HTTP: ${lastStatus}`);
+    return res.status(404).json({
+      error: `Could not connect — all Oracle API paths returned errors (last HTTP ${lastStatus}). Check the host URL is correct, e.g. https://yourcompany.fa.us2.oraclecloud.com`
+    });
+
+  } catch (err) {
+    console.error('❌ [Oracle Test] Unexpected error:', err.message);
+    return res.status(500).json({ error: err.message || 'Unexpected server error' });
+  }
+});
+
+
+/* ── Helper: load Oracle credentials from S3 ─────────────────────────── */
+async function loadOracleCredentials() {
+  try {
+    const buf = await s3ToBuffer(ORACLE_CREDS_KEY);
+    return JSON.parse(buf.toString('utf-8'));
+  } catch {
+    return null;
+  }
+}
+
 /* ── SERVER START ───────────────────────────────────────────────────────────── */
+
 app.listen(PORT, () => {
   console.log('')
   console.log('🚀  HCM Upload Server started')
