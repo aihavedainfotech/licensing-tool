@@ -27,13 +27,13 @@ function fmtCost(n: number) {
 }
 
 const RISK_CONFIG = {
-  high:   { bg: 'transparent', text: '#ef4444', border: '#ef4444', dot: '#ef4444', label: 'HIGH' },
-  medium: { bg: 'transparent', text: '#f59e0b', border: '#fde047', dot: '#f59e0b', label: 'MED'  },
-  low:    { bg: 'transparent', text: '#10b981', border: '#10b981', dot: '#10b981', label: 'LOW'  },
+  high: { bg: 'transparent', text: '#ef4444', border: '#ef4444', dot: '#ef4444', label: 'HIGH' },
+  medium: { bg: 'transparent', text: '#f59e0b', border: '#fde047', dot: '#f59e0b', label: 'MED' },
+  low: { bg: 'transparent', text: '#10b981', border: '#10b981', dot: '#10b981', label: 'LOW' },
 }
 const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string; Icon: React.ElementType }> = {
-  active:     { bg: '#ecfdf5', text: '#059669', label: 'Active',   Icon: CheckCircle2 },
-  inactive:   { bg: '#fef2f2', text: '#dc2626', label: 'Inactive', Icon: XCircle },
+  active: { bg: '#ecfdf5', text: '#059669', label: 'Active', Icon: CheckCircle2 },
+  inactive: { bg: '#fef2f2', text: '#dc2626', label: 'Inactive', Icon: XCircle },
   'on-leave': { bg: '#fffbeb', text: '#d97706', label: 'On Leave', Icon: Clock },
 }
 const AVATAR_PALETTE = [
@@ -394,7 +394,7 @@ function ServicesGrid({ services, onSelect }: { services: Service[]; onSelect: (
               </div>
               <div className="w-full mt-auto">
                 <UsageBar used={svc.licenseCount} total={svc.subscribedQuantity ?? svc.licenseCount} color="#3b82f6" />
-                
+
                 {/* Overage Warning in Card */}
                 {svc.overageCost && svc.overageCost > 0 ? (
                   <div className="mt-3 pt-3 border-t flex justify-between items-center text-[11px] font-black"
@@ -420,7 +420,7 @@ function ServicesGrid({ services, onSelect }: { services: Service[]; onSelect: (
           <h3 className="text-[16px] font-black" style={{ color: '#31231a' }}>Explore and optimize your license usage</h3>
           <p className="text-[13px] font-medium mt-1" style={{ color: '#6d5f53' }}>Click on any service card to view detailed analytics, user breakdown, and optimization recommendations.</p>
         </div>
-        
+
         {/* Banner Graphics */}
         <div className="absolute right-0 top-0 bottom-0 w-64 opacity-60 flex items-center justify-end pr-8">
           <div className="absolute w-32 h-32 bg-[#f4e2d3] rounded-full blur-2xl -right-10 top-0"></div>
@@ -495,35 +495,35 @@ function PrivilegesGrid({ privileges, service, onSelect }: {
         <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--theme-text-muted)' }}>
           {privileges.length} Privileges — click to explore
         </h2>
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-        {privileges.map(priv => (
-          <button key={priv.id} onClick={() => onSelect(priv)}
-            className="text-left rounded-xl border p-4 transition-all hover:shadow-lg hover:-translate-y-0.5 group"
-            style={{ background: 'var(--theme-bg-card)', borderColor: 'var(--theme-border)' }}>
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--theme-blue-bg)' }}>
-                <Shield size={14} style={{ color: 'var(--theme-blue-text)' }} />
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+          {privileges.map(priv => (
+            <button key={priv.id} onClick={() => onSelect(priv)}
+              className="text-left rounded-xl border p-4 transition-all hover:shadow-lg hover:-translate-y-0.5 group"
+              style={{ background: 'var(--theme-bg-card)', borderColor: 'var(--theme-border)' }}>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'var(--theme-blue-bg)' }}>
+                  <Shield size={14} style={{ color: 'var(--theme-blue-text)' }} />
+                </div>
+                <RiskBadge risk={priv.risk} />
               </div>
-              <RiskBadge risk={priv.risk} />
-            </div>
-            <p className="text-xs font-bold leading-snug mb-1 group-hover:text-blue-600 transition-colors break-all"
-              style={{ color: 'var(--theme-text-main)' }}>
-              {priv.name}
-            </p>
-            {priv.description && (
-              <p className="text-[10px] mb-2 leading-relaxed" style={{ color: 'var(--theme-text-muted)' }}>
-                {priv.description.length > 80 ? priv.description.slice(0, 80) + '…' : priv.description}
+              <p className="text-xs font-bold leading-snug mb-1 group-hover:text-blue-600 transition-colors break-all"
+                style={{ color: 'var(--theme-text-main)' }}>
+                {priv.name}
               </p>
-            )}
-            <div className="flex items-center justify-between text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>
-              <span>{priv.roles?.length ?? 0} roles</span>
-              <span>{fmtCost(priv.totalCost)}</span>
-            </div>
-          </button>
-        ))}
+              {priv.description && (
+                <p className="text-[10px] mb-2 leading-relaxed" style={{ color: 'var(--theme-text-muted)' }}>
+                  {priv.description.length > 80 ? priv.description.slice(0, 80) + '…' : priv.description}
+                </p>
+              )}
+              <div className="flex items-center justify-between text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>
+                <span>{priv.roles?.length ?? 0} roles</span>
+                <span>{fmtCost(priv.totalCost)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
     </div>
   )
 }
@@ -556,52 +556,44 @@ function CloneRoleModal({
   const [checkedPrivs, setCheckedPrivs] = useState<Record<string, boolean>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [dataSource, setDataSource] = useState<'oracle' | 'excel' | null>(null)
 
   const costedPrivileges = new Set([privilege.name])
 
   useEffect(() => {
-    let active = true;
-    setIsLoading(true);
-    setFetchError(null);
+    let active = true
+    setIsLoading(true)
+    setFetchError(null)
+    setDataSource(null)
 
     fetch(`http://localhost:3001/api/oracle/role/${encodeURIComponent(role.name)}`)
-      .then(res => res.json().then(data => ({ status: res.status, ok: res.ok, data })))
-      .then(({ status, ok, data }) => {
-        if (!active) return;
-        if (!ok) {
-          setFetchError(data.error || `Failed to fetch role (HTTP ${status})`);
-          setIsLoading(false);
-          return;
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!active) return
+        if (!ok || !data.role?.privileges?.length) {
+          setFetchError(data.error || 'Could not fetch privileges from Oracle for this role.')
+          setIsLoading(false)
+          return
         }
-
-        const privs = data.role?.privileges || [];
-        const initialState: Record<string, boolean> = {};
-        
-        privs.forEach((p: any) => {
-          const code = p.privilegeCode || p.name;
-          if (code) {
-            // Uncheck the costed privilege by default, check all others
-            initialState[code] = !costedPrivileges.has(code);
-          }
-        });
-
-        // If the array is empty, maybe they have no privileges or we couldn't parse it
-        if (Object.keys(initialState).length === 0) {
-          setFetchError('This role has no privileges or they could not be fetched.');
-        } else {
-          setCheckedPrivs(initialState);
-        }
-        setIsLoading(false);
+        setDataSource('oracle')
+        const state: Record<string, boolean> = {}
+        data.role.privileges.forEach((p: { privilegeCode: string; name: string }) => {
+          const code = p.privilegeCode || p.name
+          if (code) state[code] = !costedPrivileges.has(code)
+        })
+        setCheckedPrivs(state)
+        setIsLoading(false)
       })
-      .catch(err => {
+      .catch(() => {
         if (active) {
-          setFetchError('Network error — could not reach backend.');
-          setIsLoading(false);
+          setFetchError('Network error — could not reach backend.')
+          setIsLoading(false)
         }
-      });
+      })
 
-    return () => { active = false };
-  }, [role.name]);
+    return () => { active = false }
+  }, [role.name])
+
 
   const toggle = (p: string) => setCheckedPrivs(prev => ({ ...prev, [p]: !prev[p] }))
 
@@ -651,16 +643,22 @@ function CloneRoleModal({
               className="w-full rounded-lg px-3 py-2 text-xs font-mono border focus:outline-none focus:ring-2 focus:ring-blue-500"
               style={{ background: 'var(--theme-bg-hover)', borderColor: 'var(--theme-border)', color: 'var(--theme-text-main)' }}
               placeholder="CUSTOM_ROLE_NAME"
-              disabled={isLoading || !!fetchError}
+              disabled={isLoading}
             />
           </div>
 
           {/* Privilege checklist */}
           <div className="flex-1 flex flex-col min-h-[200px]">
-            <label className="block text-[11px] font-bold uppercase mb-2 shrink-0" style={{ color: 'var(--theme-text-muted)' }}>
-              Privileges from Oracle ({Object.keys(checkedPrivs).length})
-            </label>
-            
+            <div className="flex items-center gap-2 mb-2 shrink-0">
+              <label className="block text-[11px] font-bold uppercase" style={{ color: 'var(--theme-text-muted)' }}>
+                Privileges ({Object.keys(checkedPrivs).length})
+              </label>
+              {dataSource === 'oracle' && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #6ee7b7' }}>🔗 Live from Oracle</span>
+              )}
+            </div>
+
+
             {isLoading ? (
               <div className="flex-1 flex flex-col items-center justify-center rounded-lg border" style={{ borderColor: 'var(--theme-border)' }}>
                 <Loader2 size={24} className="animate-spin text-blue-500 mb-2" />
@@ -1038,16 +1036,16 @@ export default function ResultsPage() {
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('http://localhost:3001/api/analysis-results')
-        if (!res.ok) throw new Error('Not ready')
-        const data = await res.json()
-        if (cancelled) return
-        if (data?.services?.length > 0) { setResult(data); setStatus('ready') }
-        else setStatus('empty')
-      } catch { if (!cancelled) setStatus('empty') }
-    })()
+      ; (async () => {
+        try {
+          const res = await fetch('http://localhost:3001/api/analysis-results')
+          if (!res.ok) throw new Error('Not ready')
+          const data = await res.json()
+          if (cancelled) return
+          if (data?.services?.length > 0) { setResult(data); setStatus('ready') }
+          else setStatus('empty')
+        } catch { if (!cancelled) setStatus('empty') }
+      })()
     return () => { cancelled = true }
   }, [])
 
@@ -1126,9 +1124,9 @@ export default function ResultsPage() {
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className="relative mr-2 hidden sm:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={14} style={{ color: '#8a7d71' }} />
-            <input 
-              type="text" 
-              placeholder="Search..." 
+            <input
+              type="text"
+              placeholder="Search..."
               className="pl-8 pr-3 py-1.5 rounded-lg text-[13px] border focus:outline-none w-48"
               style={{ backgroundColor: '#ffffff', borderColor: '#efebe4', color: '#31231a' }}
             />

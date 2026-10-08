@@ -14,6 +14,7 @@ export interface Role {
   licenseUsed: number
   licenseTotal: number
   employees: Employee[]
+  allPrivileges?: string[]   // All privilege codes from Excel data (real, not simulated)
 }
 
 export interface Privilege {

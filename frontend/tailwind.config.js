@@ -41,7 +41,6 @@ export default {
         'card-hover': '0 8px 40px rgba(29,111,164,0.16)',
         'btn': '0 4px 16px rgba(29,111,164,0.3)',
         'btn-hover': '0 8px 28px rgba(29,111,164,0.45)',
-      },
       animation: {
         'float': 'float 6s ease-in-out infinite',
         'float-slow': 'float 9s ease-in-out infinite',
@@ -81,4 +80,5 @@ export default {
     },
   },
   plugins: [],
+}
 }
