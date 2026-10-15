@@ -1,7 +1,9 @@
 const fs = require('fs');
+
 let code = fs.readFileSync('src/pages/ResultsPage.tsx', 'utf-8');
 
 code = code.split("boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}").join("boxShadow: '0 2px 12px rgba(0,0,0,0.04)', background: 'var(--theme-bg-card)' }}");
+
 code = code.split("boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>").join("boxShadow: '0 2px 12px rgba(0,0,0,0.04)', background: 'var(--theme-bg-card)' }}>");
 
 // And also replace standard rounded-2xl border
@@ -14,3 +16,4 @@ code = code.split('bg-white').join('');
 
 fs.writeFileSync('src/pages/ResultsPage.tsx', code);
 console.log('Done!');
+

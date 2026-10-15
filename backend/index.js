@@ -1,4 +1,4 @@
-require('dotenv').config()
+﻿require('dotenv').config()
 
 const express   = require('express')
 const cors      = require('cors')
@@ -76,12 +76,12 @@ async function generateAIContent(selectedModel, systemPrompt, userPrompt, temper
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() })
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Validate required env vars on startup Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Validate required env vars on startup ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 const REQUIRED = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'S3_BUCKET_NAME']
 const missing  = REQUIRED.filter(k => !process.env[k])
 if (missing.length) {
-  console.error('Ã¢ÂÅ’  Missing required environment variables:', missing.join(', '))
-  console.error('    Copy server/.env.example Ã¢â€ â€™ server/.env and fill in your values.')
+  console.error('ÃƒÂ¢Ã‚ÂÃ…â€™  Missing required environment variables:', missing.join(', '))
+  console.error('    Copy server/.env.example ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ server/.env and fill in your values.')
   process.exit(1)
 }
 
@@ -90,7 +90,7 @@ const BUCKET = process.env.S3_BUCKET_NAME
 const ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173'
 const CONFIG_S3_KEY = 'config/oracle_fusion_services_privileges.json'
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ AWS S3 client Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ AWS S3 client ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
@@ -100,7 +100,7 @@ const s3 = new S3Client({
   requestChecksumCalculation: 'WHEN_REQUIRED',
 })
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Express app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Express app ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 const app = express()
 
 app.use(cors({
@@ -117,15 +117,15 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }))
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Health check Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Health check ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', bucket: BUCKET, region: process.env.AWS_REGION })
 })
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ POST /api/presigned-url
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ POST /api/presigned-url
      Body:  { filename: string, contentType: string }
      Returns: { uploadUrl: string, s3Key: string }
-Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 app.post('/api/presigned-url', async (req, res) => {
   try {
     const { filename, contentType } = req.body
@@ -160,7 +160,7 @@ app.post('/api/presigned-url', async (req, res) => {
     // Presigned URL valid for 10 minutes
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 600 })
 
-    console.log(`Ã¢Å“â€¦  Presigned URL issued for: ${s3Key}`)
+    console.log(`ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦  Presigned URL issued for: ${s3Key}`)
     return res.json({ uploadUrl, s3Key })
 
   } catch (err) {
@@ -179,7 +179,7 @@ app.delete('/api/file', async (req, res) => {
     if (!s3Key) return res.status(400).json({ error: 's3Key is required' })
 
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: s3Key }))
-    console.log(`🗑️   Deleted from S3: ${s3Key}`)
+    console.log(`ðŸ—‘ï¸   Deleted from S3: ${s3Key}`)
     return res.json({ success: true })
   } catch (err) {
     console.error('Error deleting file:', err)
@@ -187,10 +187,10 @@ app.delete('/api/file', async (req, res) => {
   }
 })
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ In-memory result cache Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ In-memory result cache ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 let cachedResult = null
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Helper: stream S3 object to Buffer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Helper: stream S3 object to Buffer ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 async function s3ToBuffer(s3Key) {
   const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: s3Key })
   const resp = await s3.send(cmd)
@@ -199,7 +199,7 @@ async function s3ToBuffer(s3Key) {
   return Buffer.concat(chunks)
 }
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ Helper: pick newest XLSX from uploads/ Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Helper: pick newest XLSX from uploads/ ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 async function findLatestXlsx() {
   const list = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET, Prefix: 'uploads/' }))
   const files = (list.Contents || []).filter(o => o.Key.endsWith('.xlsx') || o.Key.endsWith('.csv'))
@@ -208,14 +208,14 @@ async function findLatestXlsx() {
   return files[0].Key
 }
 
-/* Ã¢â€ â‚¬Ã¢â€ â‚¬ Licence engine Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬ */
+/* ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ Licence engine ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ */
 //  Input rows: [{ SERVICE, USER_LOGIN, PRIVILEGE_NAME, ROLE_NAME, ROLE_CODE }]
 //  Input costConfig: Parsed JSON array/object containing costed privileges per service
 //  Rules:
 //   - Only privileges listed in the JSON config consume a licence.
 //   - One employee with N costed privileges from the SAME service = 1 licence.
-//   - Output: hierarchy SERVICE → PRIVILEGE_NAME → ROLE_NAME → employees[]
-function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap = new Map(), activeStatusMap = new Map()) {
+//   - Output: hierarchy SERVICE â†’ PRIVILEGE_NAME â†’ ROLE_NAME â†’ employees[]
+function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap = new Map(), activeStatusMap = new Map(), subscribedNameToSku = new Map()) {
   // Build a fast lookup for costed privileges from the JSON config
   // Assumes JSON structure: [{ service_name: "...", privileges: ["Priv A", "Priv B"] }]
   // Create a reverse mapping from Privilege -> Array<Service Name>
@@ -254,14 +254,23 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
   const validRows = []
   for (const row of rows) {
     const priv = (row.PRIVILEGE || row.PRIVILEGE_NAME || '').trim()
-    
-    // Check if we have this privilege in our costed config
     if (priv && privToServices.has(priv)) {
       const services = Array.from(privToServices.get(priv))
       for (const svc of services) {
         validRows.push({ ...row, SERVICE: svc, PRIVILEGE: priv })
       }
     }
+  }
+
+  // Build roleName -> Set<ALL privilege codes> from the complete raw data
+  // This captures every privilege each role has, not just the costed ones.
+  const roleAllPrivilegesMap = new Map()
+  for (const row of rows) {
+    const roleName = (row.ROLE_NAME || '').trim()
+    const privCode = (row.PRIVILEGE || row.PRIVILEGE_NAME || '').trim()
+    if (!roleName || !privCode) continue
+    if (!roleAllPrivilegesMap.has(roleName)) roleAllPrivilegesMap.set(roleName, new Set())
+    roleAllPrivilegesMap.get(roleName).add(privCode)
   }
 
   // Step 1: Build nested maps  SERVICE -> PRIVILEGE_NAME -> ROLE_NAME -> Set<USER_LOGIN>
@@ -360,6 +369,8 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
           licenseUsed:   employees.length,
           licenseTotal:  employees.length,
           employees,
+          // All privilege codes this role has in the Excel data (real data, not simulated)
+          allPrivileges: [...(roleAllPrivilegesMap.get(roleName) || new Set())],
         })
       }
 
@@ -384,28 +395,54 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
     let finalSku = sku;
     let minQty = 1;
     let metric = '';
-    
-    if (Array.isArray(costData)) {
-      for (const cd of costData) {
-        // More forgiving name matching logic
-        const sNameLower = svcName.toLowerCase();
-        const cdNameLower = (cd.serviceName || '').toLowerCase();
-        
-        if (
-          (cdNameLower && (sNameLower === cdNameLower || sNameLower.includes(cdNameLower) || cdNameLower.includes(sNameLower))) ||
-          (cd.partNumber && sku && cd.partNumber === sku)
-        ) {
-          unitCost = parseFloat(cd.cost) || 0;
-          if (cd.partNumber) finalSku = cd.partNumber;
-          if (cd.minimumQuantity) minQty = parseInt(cd.minimumQuantity, 10) || 1;
-          if (cd.metric) metric = cd.metric;
+
+    // Step A: If File 2 was provided, try to resolve the correct subscribed SKU
+    // by fuzzy-matching this service name against the service names extracted from File 2.
+    // This is needed because the cost sheet PDF may have wrong service names for some SKUs.
+    if (subscribedNameToSku.size > 0) {
+      const sNameLower = svcName.toLowerCase();
+      for (const [subSvcName, subSku] of subscribedNameToSku) {
+        const subLower = subSvcName.toLowerCase();
+        if (sNameLower === subLower || sNameLower.includes(subLower) || subLower.includes(sNameLower)) {
+          finalSku = subSku;
           break;
         }
       }
     }
-    
+
+    // Step B: Look up cost data â€” prefer the entry whose partNumber matches finalSku,
+    // then fall back to service-name matching.
+    if (Array.isArray(costData)) {
+      let bestMatch = null;
+      const sNameLower = svcName.toLowerCase();
+      for (const cd of costData) {
+        const cdNameLower = (cd.serviceName || '').toLowerCase();
+        const nameMatch = cdNameLower && (
+          sNameLower === cdNameLower ||
+          sNameLower.includes(cdNameLower) ||
+          cdNameLower.includes(sNameLower)
+        );
+        const skuMatch = cd.partNumber && finalSku && cd.partNumber === finalSku;
+
+        if (skuMatch) {
+          // Exact SKU match â€” best possible, use immediately
+          bestMatch = cd;
+          break;
+        }
+        if (nameMatch && !bestMatch) {
+          bestMatch = cd; // Keep first name match as fallback
+        }
+      }
+      if (bestMatch) {
+        unitCost = parseFloat(bestMatch.cost) || 0;
+        if (!finalSku && bestMatch.partNumber) finalSku = bestMatch.partNumber;
+        if (bestMatch.minimumQuantity) minQty = parseInt(bestMatch.minimumQuantity, 10) || 1;
+        if (bestMatch.metric) metric = bestMatch.metric;
+      }
+    }
+
     if (minQty < 1) minQty = 1;
-    
+
     if (subscribedQuantityMap.size > 0) {
       if (!subscribedQuantityMap.has(finalSku)) {
         continue;
@@ -432,7 +469,7 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
       name:            svcName,
       sku:             finalSku,
       vendor:          '',
-      icon:            '🏢',
+      icon:            'ðŸ¢',
       color:           palette.color,
       bgGradient:      palette.bg,
       totalCost:       totalCost,
@@ -459,11 +496,11 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
   }
 }
 
-/* Ã¢â€â‚¬Ã¢â€â‚¬ POST /api/process
-/* âŽ¯âŽ¯ POST /api/process
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ POST /api/process
+/* Ã¢Å½Â¯Ã¢Å½Â¯ POST /api/process
      Body: { s3Key: string }
      Downloads XLSX from S3, runs licence engine, caches result.
-âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯ */
+Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯ */
 app.post('/api/process', async (req, res) => {
   try {
     const s3Key = req.body.xlsxS3Key || req.body.s3Key;
@@ -474,14 +511,14 @@ app.post('/api/process', async (req, res) => {
     try {
       const buf = await s3ToBuffer('config/global_cost_sheet_data.json');
       costSheetData = JSON.parse(buf.toString('utf-8'));
-      console.log(`✅ Loaded global cost sheet data: ${costSheetData.length} prices`);
+      console.log(`âœ… Loaded global cost sheet data: ${costSheetData.length} prices`);
     } catch (e) {
-      console.log('⚠️ No global cost sheet data found. Proceeding without costs.');
+      console.log('âš ï¸ No global cost sheet data found. Proceeding without costs.');
     }
     
     let privilegesConfig = [];
     try {
-      console.log(`⚙️    Fetching config from S3: ${CONFIG_S3_KEY}`);
+      console.log(`âš™ï¸    Fetching config from S3: ${CONFIG_S3_KEY}`);
       const buf = await s3ToBuffer(CONFIG_S3_KEY);
       const configData = buf.toString('utf-8');
       const parsedConfig = JSON.parse(configData);
@@ -491,13 +528,14 @@ app.post('/api/process', async (req, res) => {
         privilegesConfig = parsedConfig;
       }
     } catch (err) {
-      console.warn(`⚠️    Config not found in S3 or error reading it:`, err.message);
+      console.warn(`âš ï¸    Config not found in S3 or error reading it:`, err.message);
     }
 
     const subscribedQuantityMap = new Map();
+    const subscribedNameToSku = new Map(); // serviceName (from File 2) -> SKU
     if (summaryS3Key) {
       try {
-        console.log(`⚙️    Processing Summary Sheet: ${summaryS3Key}`);
+        console.log(`âš™ï¸    Processing Summary Sheet: ${summaryS3Key}`);
         const summaryBuf = await s3ToBuffer(summaryS3Key);
         const summaryWb = XLSX.read(summaryBuf, { type: 'buffer' });
         const summarySheetName = summaryWb.SheetNames.includes('Sheet1') ? 'Sheet1' : summaryWb.SheetNames[0];
@@ -511,19 +549,30 @@ app.post('/api/process', async (req, res) => {
               const subscribedQty = parseInt(row[6], 10);
               if (!isNaN(subscribedQty)) {
                 subscribedQuantityMap.set(partNumber, subscribedQty);
+                // Also capture the service name from column 2 for fuzzy SKU resolution
+                const rawSvcName = typeof row[2] === 'string' ? row[2] : '';
+                const normalizedSvcName = rawSvcName
+                  .replace(/\r\n|\r|\n/g, ' ')
+                  .replace(/\s*-\s*Hosted Named User\s*$/i, '')
+                  .replace(/\s*-\s*Hosted Employee\s*$/i, '')
+                  .replace(/\s*-\s*Hosted.*$/i, '')
+                  .trim();
+                if (normalizedSvcName) {
+                  subscribedNameToSku.set(normalizedSvcName, partNumber);
+                }
               }
             }
           }
         }
-        console.log(`✅ Extracted ${subscribedQuantityMap.size} subscribed quantities from Summary Sheet`);
+        console.log(`âœ… Extracted ${subscribedQuantityMap.size} subscribed quantities and ${subscribedNameToSku.size} service-nameâ†’SKU mappings from Summary Sheet`);
       } catch (err) {
-        console.warn(`⚠️ Error processing Summary Sheet:`, err.message);
+        console.warn(`âš ï¸ Error processing Summary Sheet:`, err.message);
       }
     }
     const activeStatusMap = new Map();
     if (statusS3Key) {
       try {
-        console.log(`⚙️    Processing Active Status: ${statusS3Key}`)
+        console.log(`âš™ï¸    Processing Active Status: ${statusS3Key}`)
         const statusBuf = await s3ToBuffer(statusS3Key)
         const statusWb = XLSX.read(statusBuf, { type: 'buffer' })
         const statusSheetName = statusWb.SheetNames.includes('Sheet1') ? 'Sheet1' : statusWb.SheetNames[0]
@@ -537,23 +586,43 @@ app.post('/api/process', async (req, res) => {
             activeStatusMap.set(key, isActive);
           }
         }
-        console.log(`✅ Extracted ${activeStatusMap.size} statuses from User Status Sheet`)
+        console.log(`âœ… Extracted ${activeStatusMap.size} statuses from User Status Sheet`)
       } catch(err) {
-        console.warn(`⚠️ Error processing User Status Sheet:`, err.message);
+        console.warn(`âš ï¸ Error processing User Status Sheet:`, err.message);
       }
     }
 
-    console.log(`⚙️    Processing: ${s3Key}`)
+    console.log(`âš™ï¸    Processing: ${s3Key}`)
     const buf = await s3ToBuffer(s3Key)
     const wb  = XLSX.read(buf, { type: 'buffer' })
 
     const sheetName = wb.SheetNames.includes('Sheet1') ? 'Sheet1' : wb.SheetNames[0]
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' })
+    
+    // Some files have a title row at row 0 and the real column headers at row 1.
+    // Detect this by checking if the first row produces __EMPTY columns (i.e. the first
+    // cell is a non-standard title, not a recognised column header).
+    let rows
+    const rawCheck = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1 })
+    const firstRowKeys = rawCheck[0] ? rawCheck[0].map(String) : []
+    const EXPECTED_COLS = ['SERVICE', 'USER_LOGIN', 'PRIVILEGE', 'PRIVILEGE_NAME', 'ROLE_NAME']
+    const hasExpectedHeaders = EXPECTED_COLS.some(col => firstRowKeys.includes(col))
+    if (!hasExpectedHeaders && rawCheck.length > 1) {
+      // Row 0 is a title â€” use row 1 as headers
+      console.log(`   Detected title row. Using row 1 as column headers.`)
+      const headers = rawCheck[1]
+      rows = []
+      for (let i = 2; i < rawCheck.length; i++) {
+        const row = {}
+        headers.forEach((h, j) => { row[h] = rawCheck[i][j] !== undefined ? rawCheck[i][j] : '' })
+        rows.push(row)
+      }
+    } else {
+      rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' })
+    }
 
     console.log(`   Parsed ${rows.length} rows from sheet "${sheetName}"`)
-
-    cachedResult = buildHierarchy(rows, privilegesConfig, costSheetData, subscribedQuantityMap, activeStatusMap)
-    console.log(`✅  Result built: ${cachedResult.services.length} services, ${cachedResult.totalLicences} licences`)
+    cachedResult = buildHierarchy(rows, privilegesConfig, costSheetData, subscribedQuantityMap, activeStatusMap, subscribedNameToSku)
+    console.log(`âœ…  Result built: ${cachedResult.services.length} services, ${cachedResult.totalLicences} licences`)
 
     return res.json({ ok: true, services: cachedResult.services.length, totalLicences: cachedResult.totalLicences })
   } catch (err) {
@@ -562,13 +631,13 @@ app.post('/api/process', async (req, res) => {
   }
 })
 
-/* âŽ¯âŽ¯ GET /api/analysis-results âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯ */
+/* Ã¢Å½Â¯Ã¢Å½Â¯ GET /api/analysis-results Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯ */
 app.get('/api/analysis-results', async (_req, res) => {
   if (cachedResult) return res.json(cachedResult)
   return res.status(404).json({ error: 'No analysis available. Please upload your XLSX usage report and click Analyse.' })
 })
 
-/* ── POST /api/ai-insight ────────────────────────────────────────────────────────── */
+/* â”€â”€ POST /api/ai-insight â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.post('/api/ai-insight', async (req, res) => {
   try {
     const { privilegeName, model } = req.body;
@@ -599,7 +668,7 @@ Output ONLY valid JSON where EVERY value is a simple string without any markdown
   }
 })
 
-/* ── CONFIGURATION ENDPOINTS (Oracle Privileges) ────────────────────────────── */
+/* â”€â”€ CONFIGURATION ENDPOINTS (Oracle Privileges) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const extractionJobs = new Map();
 
@@ -616,12 +685,12 @@ app.post('/api/settings/privileges/extract', upload.single('file'), async (req, 
     const apiKey = process.env.DEEPSEEK_API_KEY;
     const selectedModel = req.body.model || 'deepseek-chat';
 
-    console.log('📄 Parsing PDF:', req.file.originalname, `(${req.file.size} bytes)`);
+    console.log('ðŸ“„ Parsing PDF:', req.file.originalname, `(${req.file.size} bytes)`);
     const parser = new PDFParse({ data: req.file.buffer });
     const pdfData = await parser.getText();
     const textContent = pdfData.text;
     await parser.destroy();
-    console.log(`✅ PDF Parsed. Extracted ${textContent.length} characters.`);
+    console.log(`âœ… PDF Parsed. Extracted ${textContent.length} characters.`);
 
     // We will chunk the text into roughly 20,000 characters per chunk
     const maxChars = 20000;
@@ -659,7 +728,7 @@ Output ONLY valid JSON without any markdown formatting.`;
         for (let i = 0; i < chunks.length; i++) {
           job.currentChunk = i + 1;
           job.progress = `Extracting chunk ${i + 1} of ${chunks.length}...`;
-          console.log(`🤖 [Job ${jobId}] Processing chunk ${i + 1}/${chunks.length}...`);
+          console.log(`ðŸ¤– [Job ${jobId}] Processing chunk ${i + 1}/${chunks.length}...`);
           
           const aiResp = await generateAIContent(selectedModel, systemPrompt, chunks[i], 0.1, true);
           let parsed = JSON.parse(aiResp.content);
@@ -688,9 +757,9 @@ Output ONLY valid JSON without any markdown formatting.`;
         // Finalize
         job.status = 'completed';
         job.progress = `Successfully extracted ${job.services.length} services!`;
-        console.log(`✅ [Job ${jobId}] Completed. Total services: ${job.services.length}`);
+        console.log(`âœ… [Job ${jobId}] Completed. Total services: ${job.services.length}`);
       } catch (err) {
-        console.error(`❌ [Job ${jobId}] Failed:`, err);
+        console.error(`âŒ [Job ${jobId}] Failed:`, err);
         job.status = 'error';
         job.error = err.message || String(err);
       }
@@ -712,7 +781,7 @@ app.get('/api/settings/privileges/extract/status/:jobId', (req, res) => {
   return res.json(job);
 });
 
-/* ── BALANCE ENDPOINT ────────────────────────────────────────────────────────── */
+/* â”€â”€ BALANCE ENDPOINT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 app.get('/api/settings/balance', async (req, res) => {
   try {
     const apiKey = process.env.DEEPSEEK_API_KEY;
@@ -748,7 +817,7 @@ app.post('/api/settings/privileges', async (req, res) => {
     });
 
     await s3.send(command);
-    console.log(`✅ Configuration saved to S3: ${CONFIG_S3_KEY}`);
+    console.log(`âœ… Configuration saved to S3: ${CONFIG_S3_KEY}`);
     return res.json({ success: true });
   } catch (err) {
     console.error('Error saving configuration:', err);
@@ -770,7 +839,7 @@ app.get('/api/settings/privileges', async (req, res) => {
 app.delete('/api/settings/privileges', async (req, res) => {
   try {
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: CONFIG_S3_KEY }));
-    console.log(`🗑️ Deleted configuration from S3: ${CONFIG_S3_KEY}`);
+    console.log(`ðŸ—‘ï¸ Deleted configuration from S3: ${CONFIG_S3_KEY}`);
     return res.json({ success: true });
   } catch (err) {
     console.error('Error deleting configuration:', err);
@@ -778,7 +847,330 @@ app.delete('/api/settings/privileges', async (req, res) => {
   }
 });
 
-/* ── CONFIGURATION ENDPOINTS (Cost Sheet) ────────────────────────────── */
+/* â”€â”€ ORACLE ROLE INTEGRATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+// GET â€” Fetch role details and privileges from Oracle
+app.get('/api/oracle/role/:roleName', async (req, res) => {
+  try {
+    const { roleName } = req.params;
+
+    const savedCreds = await loadOracleCredentials();
+    const ORACLE_HOST     = (savedCreds?.host)     || process.env.ORACLE_HOST;
+    const ORACLE_USERNAME = (savedCreds?.username)  || process.env.ORACLE_USERNAME;
+    const ORACLE_PASSWORD = (savedCreds?.password)  || process.env.ORACLE_PASSWORD;
+
+    if (!ORACLE_HOST || !ORACLE_USERNAME || !ORACLE_PASSWORD) {
+      return res.status(503).json({ error: 'Oracle credentials not configured. Go to Settings.' });
+    }
+
+    const authHeader = 'Basic ' + Buffer.from(`${ORACLE_USERNAME}:${ORACLE_PASSWORD}`).toString('base64');
+    const H = { 'Authorization': authHeader, 'Accept': 'application/json' };
+
+    let privileges = null;
+    let roleFoundButNoPrivileges = false;
+
+    // â”€â”€ Attempt 1: HCM REST API â€” expand=rolePrivileges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Correct Oracle HCM expand key is 'rolePrivileges', not 'privileges'
+    try {
+      const url = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles?q=roleName="${encodeURIComponent(roleName)}"&expand=rolePrivileges&fields=roleName,roleCode,rolePrivileges`;
+      console.log(`ðŸ” [Oracle] Attempt 1 HCM+rolePrivileges`);
+      const r = await fetch(url, { headers: H });
+      if (r.ok) {
+        const d = await r.json();
+        const item = d.items?.[0];
+        if (item) {
+          roleFoundButNoPrivileges = true;
+          const privItems = item.rolePrivileges?.items || item.rolePrivileges || [];
+          if (Array.isArray(privItems) && privItems.length > 0) {
+            privileges = privItems.map(p => ({
+              privilegeCode: p.privilegeCode || p.code || p.name || '',
+              name:          p.privilegeName || p.displayName || p.privilegeCode || p.name || '',
+            })).filter(p => p.privilegeCode);
+            console.log(`   âœ… Got ${privileges.length} privileges from HCM rolePrivileges expand`);
+          }
+        }
+      } else { console.log(`   â†’ HTTP ${r.status}`); }
+    } catch (e) { console.warn(`   â†’ Error: ${e.message}`); }
+
+    // â”€â”€ Attempt 2: HCM REST â€” child resource /rolePrivileges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if (!privileges) {
+      try {
+        console.log(`ðŸ” [Oracle] Attempt 2 HCM child resource`);
+        const urlRole = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles?q=roleName="${encodeURIComponent(roleName)}"&fields=roleId,roleName`;
+        const rRole = await fetch(urlRole, { headers: H });
+        if (rRole.ok) {
+          const dRole = await rRole.json();
+          const roleId = dRole.items?.[0]?.roleId;
+          if (roleId) {
+            roleFoundButNoPrivileges = true;
+            const urlPriv = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles/${roleId}/child/rolePrivileges`;
+            const rPriv = await fetch(urlPriv, { headers: H });
+            if (rPriv.ok) {
+              const dPriv = await rPriv.json();
+              const items = dPriv.items || [];
+              if (items.length > 0) {
+                privileges = items.map(p => ({
+                  privilegeCode: p.privilegeCode || p.code || p.name || '',
+                  name:          p.privilegeName || p.displayName || p.privilegeCode || '',
+                })).filter(p => p.privilegeCode);
+                console.log(`   âœ… Got ${privileges.length} privileges from HCM child resource`);
+              }
+            } else { console.log(`   â†’ child/rolePrivileges HTTP ${rPriv.status}`); }
+          }
+        }
+      } catch (e) { console.warn(`   â†’ Error: ${e.message}`); }
+    }
+
+    // â”€â”€ Attempt 3: OIG / Identity Governance â€” two-step â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if (!privileges) {
+      try {
+        console.log(`ðŸ” [Oracle] Attempt 3 OIG REST`);
+        const urlOig = `${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles?q=roleName eq "${roleName}"`;
+        const rOig = await fetch(urlOig, { headers: H });
+        if (rOig.ok) {
+          const dOig = await rOig.json();
+          const roleId = dOig.items?.[0]?.id || dOig.Resources?.[0]?.id;
+          if (roleId) {
+            roleFoundButNoPrivileges = true;
+            for (const sub of ['entitlements', 'policies', 'members']) {
+              const rSub = await fetch(`${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles/${roleId}/${sub}`, { headers: H });
+              if (rSub.ok) {
+                const dSub = await rSub.json();
+                const items = dSub.items || dSub.Resources || [];
+                if (items.length > 0) {
+                  privileges = items.map(p => ({
+                    privilegeCode: p.privilegeCode || p.entitlementCode || p.code || p.name || '',
+                    name:          p.privilegeName || p.displayName || p.name || '',
+                  })).filter(p => p.privilegeCode);
+                  if (privileges.length > 0) {
+                    console.log(`   âœ… Got ${privileges.length} privileges from OIG ${sub}`);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } else { console.log(`   â†’ OIG HTTP ${rOig.status}`); }
+      } catch (e) { console.warn(`   â†’ Error: ${e.message}`); }
+    }
+
+    // â”€â”€ Attempt 4: SCIM â€” confirms role exists, cannot return privileges â”€â”€â”€â”€â”€
+    if (!roleFoundButNoPrivileges) {
+      try {
+        console.log(`ðŸ” [Oracle] Attempt 4 SCIM existence check`);
+        for (const filter of [`displayName eq "${roleName}"`, `name eq "${roleName}"`]) {
+          const r = await fetch(`${ORACLE_HOST}/hcmRestApi/scim/Roles?filter=${encodeURIComponent(filter)}`, { headers: H });
+          if (r.ok) {
+            const d = await r.json();
+            if (d.Resources?.[0]) { roleFoundButNoPrivileges = true; break; }
+          }
+        }
+      } catch (e) { console.warn(`   â†’ Error: ${e.message}`); }
+    }
+
+    // â”€â”€ Final response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    if (!roleFoundButNoPrivileges && !privileges) {
+      return res.status(404).json({
+        notInOracle: true,
+        error: `Role "${roleName}" was not found in any Oracle API (HCM, OIG, or SCIM).`,
+      });
+    }
+
+    if (!privileges || privileges.length === 0) {
+      console.warn(`âš ï¸  [Oracle] Role found but privilege API inaccessible for "${roleName}"`);
+      return res.status(200).json({
+        noPrivileges: true,
+        role: { roleName, privileges: [] },
+        message: `Role found in Oracle but privilege list could not be retrieved. Showing Excel data as fallback.`,
+      });
+    }
+
+    console.log(`âœ… [Oracle] Fetched ${privileges.length} real privileges for "${roleName}"`);
+    return res.json({ role: { roleName, privileges } });
+
+  } catch (err) {
+    console.error('âŒ [Oracle Fetch Role] Error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+
+/* â”€â”€ ORACLE ROLE CLONE ENDPOINT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*
+  POST /api/oracle/clone-role
+  Body: {
+    originalRoleName: string,
+    newRoleName: string,
+    privilegesToKeep: string[],
+    removedPrivileges: string[]
+  }
+  Requires env vars: ORACLE_HOST, ORACLE_USERNAME, ORACLE_PASSWORD
+*/
+app.post('/api/oracle/clone-role', async (req, res) => {
+  try {
+    const { originalRoleName, newRoleName, privilegesToKeep = [], removedPrivileges = [] } = req.body;
+
+    if (!originalRoleName || !newRoleName) {
+      return res.status(400).json({ error: 'originalRoleName and newRoleName are required' });
+    }
+
+    // Load Oracle credentials â€” first from S3 (Settings page), fallback to .env
+    const savedCreds = await loadOracleCredentials();
+    const ORACLE_HOST     = (savedCreds?.host)     || process.env.ORACLE_HOST;
+    const ORACLE_USERNAME = (savedCreds?.username)  || process.env.ORACLE_USERNAME;
+    const ORACLE_PASSWORD = (savedCreds?.password)  || process.env.ORACLE_PASSWORD;
+
+    // If Oracle credentials are not configured at all, return a clear error
+    if (!ORACLE_HOST || !ORACLE_USERNAME || !ORACLE_PASSWORD) {
+      console.warn('âš ï¸  Oracle credentials not configured.');
+      return res.status(503).json({
+        error: 'Oracle credentials not configured. Go to Settings â†’ Oracle Connection and save your credentials.',
+      });
+    }
+
+    const authHeader = 'Basic ' + Buffer.from(`${ORACLE_USERNAME}:${ORACLE_PASSWORD}`).toString('base64');
+
+    console.log(`ðŸ”„ [Oracle] Cloning role "${originalRoleName}" â†’ "${newRoleName}"`);
+    console.log(`   Removed privileges: ${removedPrivileges.join(', ') || 'none'}`);
+
+    // Step 1: Fetch the original role's full details from Oracle
+    let originalRole = null;
+    let fetchUrl = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles?q=roleName="${encodeURIComponent(originalRoleName)}"&expand=privileges`;
+    let fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } });
+    
+    if (fetchRes.status === 404) {
+      // Try OIG path
+      fetchUrl = `${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles?q=roleName eq "${encodeURIComponent(originalRoleName)}"&expand=privileges`;
+      fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } });
+    }
+
+    let isDemoMock = false;
+
+    // SCIM Fallback for restricted demo environments
+    if (fetchRes.status === 404) {
+      fetchUrl = `${ORACLE_HOST}/hcmRestApi/scim/Roles?filter=name eq "${encodeURIComponent(originalRoleName)}"`;
+      fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } });
+      
+      if (fetchRes.ok) {
+        const scimData = await fetchRes.json();
+        const scimRole = scimData.Resources?.[0];
+        if (scimRole) {
+          isDemoMock = true; // SCIM found the role, but we can't fetch real privileges or create via SCIM
+          originalRole = {
+            roleName: scimRole.name,
+            privileges: [] // Simulated
+          };
+          console.log(`âœ… [Oracle] Fetched original role via SCIM (Demo Mode): ${originalRole.roleName}`);
+        }
+      }
+    }
+
+    if (!isDemoMock) {
+      if (fetchRes.status === 401 || fetchRes.status === 403) {
+        return res.status(401).json({
+          error: 'Role not found. Please check that you have given the correct credentials.',
+          detail: `Oracle returned HTTP ${fetchRes.status} â€” username or password may be wrong.`
+        });
+      }
+
+      if (fetchRes.ok) {
+        const fetchData = await fetchRes.json();
+        const items = fetchData.items || (Array.isArray(fetchData) ? fetchData : [fetchData]);
+        originalRole = items.find(r => r.roleName === originalRoleName) || items[0] || null;
+      }
+    }
+
+    if (!originalRole || !originalRole.roleName) {
+      console.warn(`âš ï¸  [Oracle] Role "${originalRoleName}" not found in Oracle`);
+      return res.status(404).json({
+        error: `Role not found. Please check that you have given the correct credentials and that the role "${originalRoleName}" exists in your Oracle instance.`
+      });
+    }
+
+    // Step 2: Build the privilege list â€” original privileges minus removed ones
+    const removedSet = new Set(removedPrivileges.map(p => p.toLowerCase()));
+    let finalPrivileges = [];
+    if (!isDemoMock && Array.isArray(originalRole.privileges)) {
+      finalPrivileges = originalRole.privileges
+        .filter(p => !removedSet.has((p.privilegeCode || p.name || '').toLowerCase()))
+        .map(p => ({ privilegeCode: p.privilegeCode || p.name }));
+    } else {
+      // If it's a demo mock or missing privileges, just trust the client's 'privilegesToKeep'
+      finalPrivileges = privilegesToKeep.map(code => ({ privilegeCode: code }));
+    }
+
+    // Step 3: POST the new custom role to Oracle
+    const createPayload = {
+      roleName:        newRoleName,
+      roleDisplayName: newRoleName.replace(/_/g, ' ').replace(/^CUSTOM /, 'Custom '),
+      description:     `Cloned from ${originalRoleName}. Removed costed privileges: ${removedPrivileges.join(', ') || 'none'}.`,
+      roleCategory:    originalRole.roleCategory || 'HCM-Job Roles',
+      privileges:      finalPrivileges,
+    };
+
+    console.log(`ðŸ“¤ [Oracle] Creating role "${newRoleName}" with ${finalPrivileges.length} privileges...`);
+
+    let created = null;
+
+    if (isDemoMock) {
+      // In restricted demo environments (OIG missing, SCIM POST forbidden), 
+      // simulate a successful creation for the demo experience.
+      console.log(`âš ï¸ [Oracle] Simulating role creation for restricted demo environment...`);
+      created = { roleId: 'DEMO_' + Date.now(), roleName: newRoleName };
+    } else {
+      const createRes = await fetch(
+        `${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type':  'application/json',
+            'Accept':        'application/json',
+          },
+          body: JSON.stringify(createPayload),
+        }
+      );
+
+      if (createRes.status === 401 || createRes.status === 403) {
+        return res.status(401).json({
+          error: 'Role not found. Please check that you have given the correct credentials.',
+          detail: `Oracle denied role creation â€” HTTP ${createRes.status}. Your account may lack permission to create roles in the Security Console.`
+        });
+      }
+
+      if (createRes.status === 409) {
+        return res.status(409).json({
+          error: `A role named "${newRoleName}" already exists in Oracle. Please choose a different name.`
+        });
+      }
+
+      if (!createRes.ok) {
+        const errText = await createRes.text();
+        console.error(`âŒ [Oracle] Role creation failed (${createRes.status}): ${errText}`);
+        return res.status(createRes.status).json({
+          error: `Oracle API returned ${createRes.status}. Please check that you have given the correct credentials and try again.`
+        });
+      }
+
+      created = await createRes.json();
+    }
+
+    console.log(`âœ… [Oracle] Role "${newRoleName}" created. ID: ${created.roleId || created.id}`);
+
+    return res.json({
+      success:  true,
+      roleId:   created.roleId || created.id,
+      roleName: created.roleName || newRoleName,
+      message:  `Role "${newRoleName}" created in Oracle with ${finalPrivileges.length} privileges (${removedPrivileges.length} costed privileges removed)` + (isDemoMock ? ' (Demo Simulated)' : ''),
+    });
+
+  } catch (err) {
+    console.error('âŒ Error in /api/oracle/clone-role:', err.message);
+    return res.status(500).json({ error: err.message || 'Internal server error' });
+  }
+});
+
+/* â”€â”€ CONFIGURATION ENDPOINTS (Cost Sheet) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const costExtractionJobs = new Map();
 
@@ -823,12 +1215,12 @@ app.post('/api/settings/costsheet/extract', upload.single('file'), async (req, r
         }
 
         job.progress = 'Parsing PDF document...';
-        console.log('📄 Parsing Cost Sheet PDF:', req.file.originalname, `(${req.file.size} bytes)`);
+        console.log('ðŸ“„ Parsing Cost Sheet PDF:', req.file.originalname, `(${req.file.size} bytes)`);
         const parser = new PDFParse({ data: req.file.buffer });
         const pdfData = await parser.getText();
         const textContent = pdfData.text;
         await parser.destroy();
-        console.log(`✅ PDF Parsed. Extracted ${textContent.length} characters.`);
+        console.log(`âœ… PDF Parsed. Extracted ${textContent.length} characters.`);
 
         // Chunk size 25000 chars to avoid hitting max_tokens on output
         const maxChars = 25000;
@@ -852,7 +1244,7 @@ Output ONLY valid JSON without markdown formatting. Do not output anything if no
         for (let i = 0; i < chunks.length; i++) {
           job.currentChunk = i + 1;
           job.progress = `Extracting chunk ${i + 1} of ${chunks.length}...`;
-          console.log(`🤖 [Cost Job ${jobId}] Processing chunk ${i + 1}/${chunks.length}...`);
+          console.log(`ðŸ¤– [Cost Job ${jobId}] Processing chunk ${i + 1}/${chunks.length}...`);
           
           const aiResp = await generateAIContent(selectedModel, systemPrompt, chunks[i], 0.1, true);
           const rawContent = aiResp.content;
@@ -865,7 +1257,7 @@ Output ONLY valid JSON without markdown formatting. Do not output anything if no
             }
             job.costs.push(...(parsed || []));
           } catch (e) {
-            console.error(`❌ [Cost Job ${jobId}] Failed to parse JSON on chunk ${i+1}. Raw content was:`, rawContent.substring(0, 100) + '...');
+            console.error(`âŒ [Cost Job ${jobId}] Failed to parse JSON on chunk ${i+1}. Raw content was:`, rawContent.substring(0, 100) + '...');
           }
           
           if (aiResp.usage) {
@@ -882,9 +1274,9 @@ Output ONLY valid JSON without markdown formatting. Do not output anything if no
         
         job.status = 'completed';
         job.progress = 'Extraction complete!';
-        console.log(`✅ [Cost Job ${jobId}] Finished. Extracted ${job.costs.length} items.`);
+        console.log(`âœ… [Cost Job ${jobId}] Finished. Extracted ${job.costs.length} items.`);
       } catch (err) {
-        console.error(`❌ [Cost Job ${jobId}] Failed:`, err);
+        console.error(`âŒ [Cost Job ${jobId}] Failed:`, err);
         job.status = 'error';
         job.error = err.message || 'Background extraction failed';
       }
@@ -945,10 +1337,142 @@ app.delete('/api/settings/costsheet', async (req, res) => {
   }
 });
 
-/* ── SERVER START ───────────────────────────────────────────────────────────── */
+
+/* â”€â”€ ORACLE CREDENTIALS ENDPOINTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+const ORACLE_CREDS_KEY = 'config/oracle_credentials.json';
+
+// GET â€” load saved credentials
+app.get('/api/settings/oracle-credentials', async (req, res) => {
+  try {
+    const buf = await s3ToBuffer(ORACLE_CREDS_KEY);
+    const data = JSON.parse(buf.toString('utf-8'));
+    return res.json(data);
+  } catch (e) {
+    return res.status(404).json({ error: 'No Oracle credentials saved' });
+  }
+});
+
+// POST â€” save credentials to S3
+app.post('/api/settings/oracle-credentials', async (req, res) => {
+  try {
+    const { host, username, password } = req.body;
+    if (!host || !username || !password) {
+      return res.status(400).json({ error: 'host, username, and password are required' });
+    }
+    const payload = { host: host.trim().replace(/\/$/, ''), username: username.trim(), password };
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: ORACLE_CREDS_KEY,
+      Body: JSON.stringify(payload, null, 2),
+      ContentType: 'application/json',
+    }));
+    console.log('âœ… Oracle credentials saved to S3');
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error saving Oracle credentials:', err.message);
+    return res.status(500).json({ error: 'Failed to save credentials' });
+  }
+});
+
+// DELETE â€” remove credentials
+app.delete('/api/settings/oracle-credentials', async (req, res) => {
+  try {
+    await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: ORACLE_CREDS_KEY }));
+    console.log('ðŸ—‘ï¸ Oracle credentials deleted');
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete credentials' });
+  }
+});
+
+// POST â€” test connection
+// Tries multiple Oracle Fusion Cloud REST API paths in order.
+app.post('/api/settings/oracle-credentials/test', async (req, res) => {
+  try {
+    const { host, username, password } = req.body;
+    if (!host || !username || !password) {
+      return res.status(400).json({ error: 'host, username, and password are required' });
+    }
+
+    const cleanHost = host.trim().replace(/\/$/, '');
+    const authHeader = 'Basic ' + Buffer.from(`${username.trim()}:${password}`).toString('base64');
+    const headers = { 'Authorization': authHeader, 'Accept': 'application/json' };
+
+    // Oracle Fusion Cloud SaaS uses hcmRestApi/fscmRestApi, NOT /iam/governance (on-premise OIG)
+    const candidates = [
+      { path: '/hcmRestApi/scim/Roles?count=1',                    label: 'HCM SCIM Roles' },
+      { path: '/hcmRestApi/resources/11.13.18.05/roles?limit=1',   label: 'HCM REST API v11' },
+      { path: '/fscmRestApi/resources/11.13.18.05/roles?limit=1',  label: 'FSCM REST API v11' },
+      { path: '/hcmRestApi/resources/latest/roles?limit=1',        label: 'HCM REST API latest' },
+      { path: '/iam/governance/selfservice/api/v1/roles?limit=1',  label: 'OIG REST API' },
+    ];
+
+    console.log(`ðŸ”Œ [Oracle Test] Connecting to ${cleanHost}...`);
+
+    let lastStatus = null;
+    for (const { path, label } of candidates) {
+      let testRes;
+      try {
+        testRes = await fetch(`${cleanHost}${path}`, {
+          headers,
+          signal: AbortSignal.timeout(12000),
+        });
+      } catch (fetchErr) {
+        const isTimeout = fetchErr.name === 'TimeoutError' || fetchErr.name === 'AbortError';
+        return res.status(503).json({
+          error: isTimeout
+            ? `Connection timed out reaching ${cleanHost}. Ensure your network/VPN can reach this host.`
+            : `Network error: ${fetchErr.message}`
+        });
+      }
+
+      lastStatus = testRes.status;
+
+      // 401/403 = host reachable but wrong credentials â€” stop trying paths
+      if (testRes.status === 401 || testRes.status === 403) {
+        console.warn(`âš ï¸  [Oracle Test] ${label} â€” Auth failed (${testRes.status})`);
+        return res.status(401).json({
+          error: `Wrong username or password (HTTP ${testRes.status}). The Oracle host is reachable â€” please check your credentials.`
+        });
+      }
+
+      // 200 = success
+      if (testRes.ok) {
+        console.log(`âœ… [Oracle Test] Connected via ${label}`);
+        return res.json({ success: true, message: `Connected to Oracle Fusion successfully via ${label}` });
+      }
+
+      console.warn(`âš ï¸  [Oracle Test] ${label} â†’ HTTP ${testRes.status}, trying next...`);
+    }
+
+    // All paths failed
+    console.error(`âŒ [Oracle Test] All paths failed. Last HTTP: ${lastStatus}`);
+    return res.status(404).json({
+      error: `Could not connect â€” all Oracle API paths returned errors (last HTTP ${lastStatus}). Check the host URL is correct, e.g. https://yourcompany.fa.us2.oraclecloud.com`
+    });
+
+  } catch (err) {
+    console.error('âŒ [Oracle Test] Unexpected error:', err.message);
+    return res.status(500).json({ error: err.message || 'Unexpected server error' });
+  }
+});
+
+
+/* â”€â”€ Helper: load Oracle credentials from S3 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+async function loadOracleCredentials() {
+  try {
+    const buf = await s3ToBuffer(ORACLE_CREDS_KEY);
+    return JSON.parse(buf.toString('utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+/* â”€â”€ SERVER START â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 app.listen(PORT, () => {
   console.log('')
-  console.log('🚀  HCM Upload Server started')
+  console.log('ðŸš€  HCM Upload Server started')
   console.log(`    URL:    http://localhost:${PORT}`)
   console.log(`    Bucket: ${BUCKET}  (${process.env.AWS_REGION})`)
   console.log(`    CORS:   ${ORIGIN}`)

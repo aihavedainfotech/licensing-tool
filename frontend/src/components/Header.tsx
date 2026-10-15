@@ -65,13 +65,7 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
           </div>
         )}
 
-        <button onClick={() => navigate('/config')} className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600">
-          <Settings size={16} />
-        </button>
-        <button className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-          style={{ background: 'linear-gradient(135deg, #ba6017, #d47e3b)' }}>
-          <User size={14} />
-        </button>
+
       </div>
     </header>
   )

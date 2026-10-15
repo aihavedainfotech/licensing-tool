@@ -6,7 +6,8 @@ import {
   Download, Loader2, FileX2,
   BarChart3, Key, Sparkles, Brain, LayoutTemplate,
   ChevronLeft, Package, TrendingUp, TrendingDown,
-  Building2, LineChart, Search
+  Building2, LineChart, Search, Copy, X, ClipboardList,
+  RefreshCw, ChevronDown, ChevronUp
 } from 'lucide-react'
 import Header from '../components/Header'
 import type { Service, Privilege, Role, Employee, ParseResult } from '../types'
@@ -26,13 +27,13 @@ function fmtCost(n: number) {
 }
 
 const RISK_CONFIG = {
-  high:   { bg: 'transparent', text: '#ef4444', border: '#ef4444', dot: '#ef4444', label: 'HIGH' },
-  medium: { bg: 'transparent', text: '#f59e0b', border: '#fde047', dot: '#f59e0b', label: 'MED'  },
-  low:    { bg: 'transparent', text: '#10b981', border: '#10b981', dot: '#10b981', label: 'LOW'  },
+  high: { bg: 'transparent', text: '#ef4444', border: '#ef4444', dot: '#ef4444', label: 'HIGH' },
+  medium: { bg: 'transparent', text: '#f59e0b', border: '#fde047', dot: '#f59e0b', label: 'MED' },
+  low: { bg: 'transparent', text: '#10b981', border: '#10b981', dot: '#10b981', label: 'LOW' },
 }
 const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string; Icon: React.ElementType }> = {
-  active:     { bg: '#ecfdf5', text: '#059669', label: 'Active',   Icon: CheckCircle2 },
-  inactive:   { bg: '#fef2f2', text: '#dc2626', label: 'Inactive', Icon: XCircle },
+  active: { bg: '#ecfdf5', text: '#059669', label: 'Active', Icon: CheckCircle2 },
+  inactive: { bg: '#fef2f2', text: '#dc2626', label: 'Inactive', Icon: XCircle },
   'on-leave': { bg: '#fffbeb', text: '#d97706', label: 'On Leave', Icon: Clock },
 }
 const AVATAR_PALETTE = [
@@ -47,16 +48,17 @@ const AVATAR_PALETTE = [
 
 /* ─── UsageBar ────────────────────────────────────────── */
 function UsageBar({ used, total, color = '#1d6fa4' }: { used: number; total: number; color?: string }) {
-  const pct = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0
-  const fill = pct >= 95 ? '#ef4444' : pct >= 80 ? '#f97316' : pct <= 35 ? '#10b981' : color
+  const actualPct = total > 0 ? Math.round((used / total) * 100) : 0
+  const barPct = Math.min(100, actualPct)
+  const fill = actualPct >= 95 ? '#ef4444' : actualPct >= 80 ? '#f97316' : actualPct <= 35 ? '#10b981' : color
   return (
     <div className="mb-2">
       <div className="flex justify-between text-[11px] font-bold mb-2">
         <span style={{ color: '#6d5f53' }}>{used.toLocaleString()} used</span>
-        <span style={{ color: pct >= 95 ? '#ef4444' : '#6d5f53' }}>{total > 0 ? `${pct}%` : '—'}</span>
+        <span style={{ color: actualPct >= 95 ? '#ef4444' : '#6d5f53' }}>{total > 0 ? `${actualPct}%` : '—'}</span>
       </div>
       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#efebe4' }}>
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: fill }} />
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${barPct}%`, background: fill }} />
       </div>
     </div>
   )
@@ -218,7 +220,7 @@ function Rail({
                 background: isActive ? '#1d6fa4' : 'transparent',
                 color: isActive ? 'white' : 'var(--theme-text-main)',
               }}>
-              <span className="flex-1 font-medium leading-tight break-words" style={{ wordBreak: 'break-word' }}>
+              <span className="flex-1 font-medium leading-tight break-all" style={{ wordBreak: 'break-all' }}>
                 {item.name}
               </span>
               {item.risk && !isActive && (
@@ -392,7 +394,7 @@ function ServicesGrid({ services, onSelect }: { services: Service[]; onSelect: (
               </div>
               <div className="w-full mt-auto">
                 <UsageBar used={svc.licenseCount} total={svc.subscribedQuantity ?? svc.licenseCount} color="#3b82f6" />
-                
+
                 {/* Overage Warning in Card */}
                 {svc.overageCost && svc.overageCost > 0 ? (
                   <div className="mt-3 pt-3 border-t flex justify-between items-center text-[11px] font-black"
@@ -418,7 +420,7 @@ function ServicesGrid({ services, onSelect }: { services: Service[]; onSelect: (
           <h3 className="text-[16px] font-black" style={{ color: '#31231a' }}>Explore and optimize your license usage</h3>
           <p className="text-[13px] font-medium mt-1" style={{ color: '#6d5f53' }}>Click on any service card to view detailed analytics, user breakdown, and optimization recommendations.</p>
         </div>
-        
+
         {/* Banner Graphics */}
         <div className="absolute right-0 top-0 bottom-0 w-64 opacity-60 flex items-center justify-end pr-8">
           <div className="absolute w-32 h-32 bg-[#f4e2d3] rounded-full blur-2xl -right-10 top-0"></div>
@@ -493,45 +495,343 @@ function PrivilegesGrid({ privileges, service, onSelect }: {
         <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--theme-text-muted)' }}>
           {privileges.length} Privileges — click to explore
         </h2>
-      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-        {privileges.map(priv => (
-          <button key={priv.id} onClick={() => onSelect(priv)}
-            className="text-left rounded-xl border p-4 transition-all hover:shadow-lg hover:-translate-y-0.5 group"
-            style={{ background: 'var(--theme-bg-card)', borderColor: 'var(--theme-border)' }}>
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--theme-blue-bg)' }}>
-                <Shield size={14} style={{ color: 'var(--theme-blue-text)' }} />
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+          {privileges.map(priv => (
+            <button key={priv.id} onClick={() => onSelect(priv)}
+              className="text-left rounded-xl border p-4 transition-all hover:shadow-lg hover:-translate-y-0.5 group"
+              style={{ background: 'var(--theme-bg-card)', borderColor: 'var(--theme-border)' }}>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'var(--theme-blue-bg)' }}>
+                  <Shield size={14} style={{ color: 'var(--theme-blue-text)' }} />
+                </div>
+                <RiskBadge risk={priv.risk} />
               </div>
-              <RiskBadge risk={priv.risk} />
-            </div>
-            <p className="text-xs font-bold leading-snug mb-1 group-hover:text-blue-600 transition-colors"
-              style={{ color: 'var(--theme-text-main)' }}>
-              {priv.name}
-            </p>
-            {priv.description && (
-              <p className="text-[10px] mb-2 leading-relaxed" style={{ color: 'var(--theme-text-muted)' }}>
-                {priv.description.length > 80 ? priv.description.slice(0, 80) + '…' : priv.description}
+              <p className="text-xs font-bold leading-snug mb-1 group-hover:text-blue-600 transition-colors break-all"
+                style={{ color: 'var(--theme-text-main)' }}>
+                {priv.name}
               </p>
-            )}
-            <div className="flex items-center justify-between text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>
-              <span>{priv.roles?.length ?? 0} roles</span>
-              <span>{fmtCost(priv.totalCost)}</span>
-            </div>
-          </button>
-        ))}
+              {priv.description && (
+                <p className="text-[10px] mb-2 leading-relaxed" style={{ color: 'var(--theme-text-muted)' }}>
+                  {priv.description.length > 80 ? priv.description.slice(0, 80) + '…' : priv.description}
+                </p>
+              )}
+              <div className="flex items-center justify-between text-[10px]" style={{ color: 'var(--theme-text-muted)' }}>
+                <span>{priv.roles?.length ?? 0} roles</span>
+                <span>{fmtCost(priv.totalCost)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
+  )
+}
+
+/* ─── Clone Log Types ─────────────────────────────────── */
+type CloneStatus = 'pending' | 'success' | 'failed'
+interface CloneEntry {
+  id: string
+  originalRole: string
+  newRoleName: string
+  service: string
+  privilege: string
+  timestamp: string
+  status: CloneStatus
+  message: string
+  removedPrivileges: string[]
+}
+
+/* ─── Clone Role Modal ─────────────────────────────────── */
+function CloneRoleModal({
+  role, privilege, service, onClose, onSubmit
+}: {
+  role: Role
+  privilege: Privilege
+  service: Service
+  onClose: () => void
+  onSubmit: (entry: Omit<CloneEntry, 'id' | 'timestamp' | 'status' | 'message'>) => void
+}) {
+  const [newRoleName, setNewRoleName] = useState(`CUSTOM_${role.name.replace(/[^A-Z0-9_]/gi, '_').toUpperCase()}`)
+  const [checkedPrivs, setCheckedPrivs] = useState<Record<string, boolean>>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [dataSource, setDataSource] = useState<'oracle' | 'excel' | null>(null)
+
+  const costedPrivileges = new Set([privilege.name])
+
+  useEffect(() => {
+    let active = true
+    setIsLoading(true)
+    setFetchError(null)
+    setDataSource(null)
+
+    fetch(`http://localhost:3001/api/oracle/role/${encodeURIComponent(role.name)}`)
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!active) return
+        if (!ok || !data.role?.privileges?.length) {
+          setFetchError(data.error || 'Could not fetch privileges from Oracle for this role.')
+          setIsLoading(false)
+          return
+        }
+        setDataSource('oracle')
+        const state: Record<string, boolean> = {}
+        data.role.privileges.forEach((p: { privilegeCode: string; name: string }) => {
+          const code = p.privilegeCode || p.name
+          if (code) state[code] = !costedPrivileges.has(code)
+        })
+        setCheckedPrivs(state)
+        setIsLoading(false)
+      })
+      .catch(() => {
+        if (active) {
+          setFetchError('Network error — could not reach backend.')
+          setIsLoading(false)
+        }
+      })
+
+    return () => { active = false }
+  }, [role.name])
+
+
+  const toggle = (p: string) => setCheckedPrivs(prev => ({ ...prev, [p]: !prev[p] }))
+
+  const removedList = Object.entries(checkedPrivs)
+    .filter(([_, checked]) => !checked)
+    .map(([p]) => p)
+
+  function handleSubmit() {
+    if (!newRoleName.trim()) return
+    onSubmit({
+      originalRole: role.name,
+      newRoleName: newRoleName.trim(),
+      service: service.name,
+      privilege: privilege.name,
+      removedPrivileges: removedList,
+    })
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
+      <div className="w-full max-w-md max-h-[90vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden" style={{ background: 'var(--theme-bg-card)' }}>
+        {/* Header */}
+        <div className="px-5 py-4 flex items-center gap-3 shrink-0" style={{ background: 'linear-gradient(90deg,#1d4ed8,#2563eb)', color: 'white' }}>
+          <Copy size={18} />
+          <div>
+            <h3 className="font-bold text-sm">Clone Role to Oracle</h3>
+            <p className="text-[11px] opacity-70">Create a custom role without costed privileges</p>
+          </div>
+          <button onClick={onClose} className="ml-auto opacity-70 hover:opacity-100"><X size={18} /></button>
+        </div>
+
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto">
+          {/* Original role */}
+          <div className="rounded-lg p-3 text-xs shrink-0" style={{ background: 'var(--theme-bg-hover)', borderLeft: '3px solid #6b7280' }}>
+            <p className="text-[10px] font-bold uppercase mb-1" style={{ color: 'var(--theme-text-muted)' }}>Original Role</p>
+            <p className="font-bold break-all" style={{ color: 'var(--theme-text-main)' }}>{role.name}</p>
+            <p className="text-[10px] mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>{role.employeeCount} employees · {service.name}</p>
+          </div>
+
+          {/* New role name */}
+          <div className="shrink-0">
+            <label className="block text-[11px] font-bold uppercase mb-1" style={{ color: 'var(--theme-text-muted)' }}>New Custom Role Name</label>
+            <input
+              value={newRoleName}
+              onChange={e => setNewRoleName(e.target.value.toUpperCase().replace(/\s/g, '_'))}
+              className="w-full rounded-lg px-3 py-2 text-xs font-mono border focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{ background: 'var(--theme-bg-hover)', borderColor: 'var(--theme-border)', color: 'var(--theme-text-main)' }}
+              placeholder="CUSTOM_ROLE_NAME"
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* Privilege checklist */}
+          <div className="flex-1 flex flex-col min-h-[200px]">
+            <div className="flex items-center gap-2 mb-2 shrink-0">
+              <label className="block text-[11px] font-bold uppercase" style={{ color: 'var(--theme-text-muted)' }}>
+                Privileges ({Object.keys(checkedPrivs).length})
+              </label>
+              {dataSource === 'oracle' && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #6ee7b7' }}>🔗 Live from Oracle</span>
+              )}
+            </div>
+
+
+            {isLoading ? (
+              <div className="flex-1 flex flex-col items-center justify-center rounded-lg border" style={{ borderColor: 'var(--theme-border)' }}>
+                <Loader2 size={24} className="animate-spin text-blue-500 mb-2" />
+                <p className="text-xs text-slate-500">Fetching privileges from Oracle...</p>
+              </div>
+            ) : fetchError ? (
+              <div className="flex-1 rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700">
+                <p className="font-bold mb-1">Could not load privileges</p>
+                <p>{fetchError}</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex-1 rounded-lg border overflow-y-auto" style={{ borderColor: 'var(--theme-border)' }}>
+                  {Object.entries(checkedPrivs).map(([p, checked]) => (
+                    <label key={p}
+                      className="flex items-start gap-3 px-3 py-2.5 cursor-pointer hover:opacity-90 border-b last:border-0"
+                      style={{
+                        background: checked ? 'var(--theme-bg-hover)' : '#fef2f2',
+                        borderColor: 'var(--theme-border)',
+                      }}>
+                      <input type="checkbox" checked={checked} onChange={() => toggle(p)}
+                        className="mt-0.5 accent-blue-600" />
+                      <span className="flex-1 text-xs font-medium break-all" style={{ color: checked ? 'var(--theme-text-main)' : '#dc2626' }}>
+                        {p}
+                      </span>
+                      {costedPrivileges.has(p) && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0" style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>💰 COSTED</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+                {removedList.length > 0 && (
+                  <p className="text-[10px] mt-1.5 font-medium shrink-0" style={{ color: '#dc2626' }}>
+                    ⚠ {removedList.length} privilege{removedList.length > 1 ? 's' : ''} will be removed from the cloned role
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose}
+              className="flex-1 py-2 rounded-lg text-xs font-bold border transition-opacity hover:opacity-70"
+              style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-muted)' }}>
+              Cancel
+            </button>
+            <button onClick={handleSubmit}
+              disabled={!newRoleName.trim()}
+              className="flex-1 py-2 rounded-lg text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-1.5"
+              style={{ background: 'linear-gradient(90deg,#1d4ed8,#2563eb)' }}>
+              <Copy size={13} /> Create in Oracle
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Clone Activity Log ──────────────────────────────── */
+function CloneActivityLog({ entries, onClear }: { entries: CloneEntry[], onClear: () => void }) {
+  const [collapsed, setCollapsed] = useState(false)
+
+  if (entries.length === 0) return null
+
+  const statusIcon = (s: CloneStatus) => {
+    if (s === 'pending') return <RefreshCw size={12} className="animate-spin" style={{ color: '#d97706' }} />
+    if (s === 'success') return <CheckCircle2 size={12} style={{ color: '#059669' }} />
+    return <XCircle size={12} style={{ color: '#dc2626' }} />
+  }
+  const statusBg = (s: CloneStatus) => s === 'success' ? '#ecfdf5' : s === 'failed' ? '#fef2f2' : '#fffbeb'
+  const statusBorder = (s: CloneStatus) => s === 'success' ? '#6ee7b7' : s === 'failed' ? '#fecaca' : '#fde68a'
+  const statusText = (s: CloneStatus) => s === 'success' ? '#059669' : s === 'failed' ? '#dc2626' : '#b45309'
+
+  return (
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-bg-card)' }}>
+      {/* Header */}
+      <div
+        className="px-4 py-3 flex items-center gap-2 cursor-pointer select-none"
+        style={{ background: 'var(--theme-bg-hover)', borderBottom: collapsed ? 'none' : '1px solid var(--theme-border)' }}
+        onClick={() => setCollapsed(c => !c)}>
+        <ClipboardList size={14} style={{ color: '#2563eb' }} />
+        <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--theme-text-main)' }}>Clone Activity Log</span>
+        <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#dbeafe', color: '#1d4ed8' }}>{entries.length}</span>
+        <button onClick={e => { e.stopPropagation(); onClear() }}
+          className="ml-auto text-[10px] font-bold hover:opacity-70 transition-opacity"
+          style={{ color: '#dc2626' }}>Clear</button>
+        {collapsed ? <ChevronDown size={14} style={{ color: 'var(--theme-text-muted)' }} /> : <ChevronUp size={14} style={{ color: 'var(--theme-text-muted)' }} />}
+      </div>
+
+      {!collapsed && (
+        <div className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
+          {[...entries].reverse().map(entry => (
+            <div key={entry.id} className="px-4 py-3 flex items-start gap-3"
+              style={{ background: statusBg(entry.status), borderLeft: `3px solid ${statusBorder(entry.status)}` }}>
+              <div className="mt-0.5">{statusIcon(entry.status)}</div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-bold break-all" style={{ color: statusText(entry.status) }}>
+                    {entry.newRoleName}
+                  </span>
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase"
+                    style={{ background: statusBorder(entry.status) + '44', color: statusText(entry.status) }}>
+                    {entry.status}
+                  </span>
+                </div>
+                <p className="text-[10px] mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>
+                  Copied from: <span className="font-semibold">{entry.originalRole}</span>
+                </p>
+                {entry.removedPrivileges.length > 0 && (
+                  <p className="text-[10px] mt-0.5" style={{ color: '#dc2626' }}>
+                    Removed: {entry.removedPrivileges.join(', ')}
+                  </p>
+                )}
+                <p className="text-[10px] mt-0.5" style={{ color: 'var(--theme-text-muted)' }}>
+                  {entry.message} · {new Date(entry.timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Toast Notification ──────────────────────────────── */
+function CloneToast({ entry, onDismiss }: { entry: CloneEntry | null, onDismiss: () => void }) {
+  useEffect(() => {
+    if (!entry) return
+    const t = setTimeout(onDismiss, 4000)
+    return () => clearTimeout(t)
+  }, [entry])
+
+  if (!entry) return null
+
+  const isSuccess = entry.status === 'success'
+  const isFailed = entry.status === 'failed'
+  const isPending = entry.status === 'pending'
+
+  return (
+    <div
+      className="fixed bottom-6 right-6 z-50 flex items-start gap-3 px-4 py-3 rounded-xl shadow-2xl max-w-sm animate-bounce-in"
+      style={{
+        background: isSuccess ? '#ecfdf5' : isFailed ? '#fef2f2' : '#fffbeb',
+        border: `1.5px solid ${isSuccess ? '#6ee7b7' : isFailed ? '#fecaca' : '#fde68a'}`,
+        color: isSuccess ? '#065f46' : isFailed ? '#991b1b' : '#92400e',
+      }}>
+      {isPending && <RefreshCw size={16} className="animate-spin mt-0.5 shrink-0" />}
+      {isSuccess && <CheckCircle2 size={16} className="mt-0.5 shrink-0" style={{ color: '#059669' }} />}
+      {isFailed && <XCircle size={16} className="mt-0.5 shrink-0" style={{ color: '#dc2626' }} />}
+      <div>
+        <p className="text-xs font-bold">
+          {isSuccess ? '✅ Role Created Successfully' : isFailed ? '❌ Clone Failed' : '⏳ Creating Role...'}
+        </p>
+        <p className="text-[11px] mt-0.5">{entry.newRoleName}</p>
+        <p className="text-[10px] opacity-70">{entry.message}</p>
+      </div>
+      <button onClick={onDismiss} className="ml-auto opacity-50 hover:opacity-100 shrink-0"><X size={14} /></button>
     </div>
   )
 }
 
 /* ─── Roles Grid + AI ─────────────────────────────────── */
-function RolesAndAI({ roles, privilege, service, onSelect }: {
+function RolesAndAI({ roles, privilege, service, onSelect, onClone, cloneLog, onClearLog }: {
   roles: Role[]
   privilege: Privilege
   service: Service
   onSelect: (r: Role) => void
+  onClone: (role: Role) => void
+  cloneLog: CloneEntry[]
+  onClearLog: () => void
 }) {
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
@@ -544,31 +844,65 @@ function RolesAndAI({ roles, privilege, service, onSelect }: {
           {roles.map(role => {
             const pct = role.licenseTotal > 0 ? Math.round((role.licenseUsed / role.licenseTotal) * 100) : 0
             const isHot = pct >= 95
+            // Check if this role has been cloned
+            const existingClone = cloneLog.find(e => e.originalRole === role.name)
             return (
-              <button key={role.id} onClick={() => onSelect(role)}
-                className="text-left rounded-xl border p-3.5 transition-all hover:shadow-md hover:-translate-y-0.5 group"
+              <div key={role.id} className="relative flex flex-col rounded-xl border transition-all hover:shadow-md"
                 style={{ background: 'var(--theme-bg-card)', borderColor: isHot ? '#fecaca' : 'var(--theme-border)' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: isHot ? '#fef2f2' : 'var(--theme-blue-bg)' }}>
-                    <Layers size={13} style={{ color: isHot ? '#dc2626' : 'var(--theme-blue-text)' }} />
+
+                {/* Clone status badge */}
+                {existingClone && (
+                  <div className="absolute -top-2 -right-2 z-10 flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full shadow"
+                    style={{
+                      background: existingClone.status === 'success' ? '#ecfdf5' : existingClone.status === 'failed' ? '#fef2f2' : '#fffbeb',
+                      color: existingClone.status === 'success' ? '#059669' : existingClone.status === 'failed' ? '#dc2626' : '#b45309',
+                      border: `1px solid ${existingClone.status === 'success' ? '#6ee7b7' : existingClone.status === 'failed' ? '#fecaca' : '#fde68a'}`,
+                    }}>
+                    {existingClone.status === 'success' ? '✅' : existingClone.status === 'failed' ? '❌' : '⏳'}
+                    {existingClone.status}
                   </div>
-                  <div className="flex items-center gap-1 ml-auto text-[10px] font-semibold"
-                    style={{ color: 'var(--theme-text-muted)' }}>
-                    <Users size={10} />
-                    {role.employeeCount}
+                )}
+
+                {/* Clickable card body */}
+                <button onClick={() => onSelect(role)} className="text-left p-3.5 flex-1 group">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ background: isHot ? '#fef2f2' : 'var(--theme-blue-bg)' }}>
+                      <Layers size={13} style={{ color: isHot ? '#dc2626' : 'var(--theme-blue-text)' }} />
+                    </div>
+                    <div className="flex items-center gap-1 ml-auto text-[10px] font-semibold"
+                      style={{ color: 'var(--theme-text-muted)' }}>
+                      <Users size={10} />
+                      {role.employeeCount}
+                    </div>
                   </div>
-                </div>
-                <p className="text-xs font-bold leading-snug mb-2 group-hover:text-blue-600 transition-colors"
-                  style={{ color: 'var(--theme-text-main)' }}>
-                  {role.name}
-                </p>
-                <UsageBar used={role.licenseUsed} total={role.licenseTotal} color={service.color} />
-              </button>
+                  <p className="text-xs font-bold leading-snug mb-2 group-hover:text-blue-600 transition-colors break-all"
+                    style={{ color: 'var(--theme-text-main)' }}>
+                    {role.name}
+                  </p>
+                  <UsageBar used={role.licenseUsed} total={role.licenseTotal} color={service.color} />
+                </button>
+
+                {/* Clone button */}
+                <button
+                  onClick={() => onClone(role)}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 text-[10px] font-bold border-t transition-colors hover:opacity-80"
+                  style={{
+                    borderColor: 'var(--theme-border)',
+                    color: existingClone?.status === 'success' ? '#059669' : '#2563eb',
+                    background: existingClone?.status === 'success' ? '#ecfdf5' : 'var(--theme-bg-hover)',
+                  }}>
+                  <Copy size={11} />
+                  {existingClone?.status === 'success' ? 'Clone Again' : 'Clone to Oracle'}
+                </button>
+              </div>
             )
           })}
         </div>
       </div>
+
+      {/* Clone Activity Log */}
+      <CloneActivityLog entries={cloneLog} onClear={onClearLog} />
 
       {/* AI Insights */}
       <AIInsightPanel privilege={privilege} service={service} />
@@ -643,18 +977,75 @@ export default function ResultsPage() {
   const [selPriv, setSelPriv] = useState<Privilege | null>(null)
   const [selRole, setSelRole] = useState<Role | null>(null)
 
+  // Clone role state
+  const [cloneModalRole, setCloneModalRole] = useState<Role | null>(null)
+  const [cloneLog, setCloneLog] = useState<CloneEntry[]>(() => {
+    try { return JSON.parse(localStorage.getItem('oracle_clone_log') || '[]') }
+    catch { return [] }
+  })
+  const [toastEntry, setToastEntry] = useState<CloneEntry | null>(null)
+
+  function saveLog(entries: CloneEntry[]) {
+    setCloneLog(entries)
+    localStorage.setItem('oracle_clone_log', JSON.stringify(entries))
+  }
+
+  async function handleCloneSubmit(data: Omit<CloneEntry, 'id' | 'timestamp' | 'status' | 'message'>) {
+    const id = `${Date.now()}`
+    const pending: CloneEntry = {
+      ...data, id, timestamp: new Date().toISOString(),
+      status: 'pending',
+      message: 'Sending request to Oracle...'
+    }
+    const updated = [...cloneLog, pending]
+    saveLog(updated)
+    setToastEntry(pending)
+
+    try {
+      const res = await fetch('http://localhost:3001/api/oracle/clone-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalRoleName: data.originalRole,
+          newRoleName: data.newRoleName,
+          privilegesToKeep: [],
+          removedPrivileges: data.removedPrivileges,
+        })
+      })
+      const json = await res.json()
+      const final: CloneEntry = {
+        ...pending,
+        status: res.ok ? 'success' : 'failed',
+        message: res.ok
+          ? `Role "${data.newRoleName}" created in Oracle successfully`
+          : (json.error || 'Oracle returned an error')
+      }
+      const finalLog = updated.map(e => e.id === id ? final : e)
+      saveLog(finalLog)
+      setToastEntry(final)
+    } catch (err: any) {
+      const failed: CloneEntry = {
+        ...pending,
+        status: 'failed',
+        message: err.message || 'Network error — could not reach Oracle'
+      }
+      saveLog(updated.map(e => e.id === id ? failed : e))
+      setToastEntry(failed)
+    }
+  }
+
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('http://localhost:3001/api/analysis-results')
-        if (!res.ok) throw new Error('Not ready')
-        const data = await res.json()
-        if (cancelled) return
-        if (data?.services?.length > 0) { setResult(data); setStatus('ready') }
-        else setStatus('empty')
-      } catch { if (!cancelled) setStatus('empty') }
-    })()
+      ; (async () => {
+        try {
+          const res = await fetch('http://localhost:3001/api/analysis-results')
+          if (!res.ok) throw new Error('Not ready')
+          const data = await res.json()
+          if (cancelled) return
+          if (data?.services?.length > 0) { setResult(data); setStatus('ready') }
+          else setStatus('empty')
+        } catch { if (!cancelled) setStatus('empty') }
+      })()
     return () => { cancelled = true }
   }, [])
 
@@ -733,27 +1124,16 @@ export default function ResultsPage() {
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className="relative mr-2 hidden sm:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2" size={14} style={{ color: '#8a7d71' }} />
-            <input 
-              type="text" 
-              placeholder="Search..." 
+            <input
+              type="text"
+              placeholder="Search..."
               className="pl-8 pr-3 py-1.5 rounded-lg text-[13px] border focus:outline-none w-48"
               style={{ backgroundColor: '#ffffff', borderColor: '#efebe4', color: '#31231a' }}
             />
           </div>
           {status === 'ready' && result && (
             <>
-              {(() => {
-                const totalExtraCost = result.services.reduce((sum, s) => sum + (s.overageCost || 0), 0)
-                if (totalExtraCost > 0) {
-                  return (
-                    <div className="flex items-center gap-1.5 px-4 py-2 rounded-lg border font-black text-[13px]"
-                      style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#dc2626' }}>
-                      <TrendingUp size={16} /> Overage: {fmtCost(totalExtraCost)}
-                    </div>
-                  )
-                }
-                return null
-              })()}
+
               <div className="flex items-center gap-2 px-4 py-2 rounded-lg border"
                 style={{ background: '#fdfbf7', borderColor: '#efebe4' }}>
                 <LayoutTemplate size={16} style={{ color: '#6d5f53' }} />
@@ -767,10 +1147,7 @@ export default function ResultsPage() {
                   <option value="t1">Executive</option>
                 </select>
               </div>
-              <button className="flex items-center gap-1.5 px-6 py-2 rounded-lg text-[13px] font-black shadow-sm hover:opacity-90 transition-opacity"
-                style={{ background: '#ba6017', color: 'white' }}>
-                <Download size={16} /> Export
-              </button>
+
             </>
           )}
         </div>
@@ -825,7 +1202,13 @@ export default function ResultsPage() {
             {/* Panel 2: Roles + AI */}
             {level >= 2 && selPriv && selSvc && (
               level === 2 ? (
-                <RolesAndAI roles={selPriv.roles} privilege={selPriv} service={selSvc} onSelect={selectRole} />
+                <RolesAndAI
+                  roles={selPriv.roles} privilege={selPriv} service={selSvc}
+                  onSelect={selectRole}
+                  onClone={role => setCloneModalRole(role)}
+                  cloneLog={cloneLog}
+                  onClearLog={() => saveLog([])}
+                />
               ) : (
                 <Rail
                   label="Roles"
@@ -847,6 +1230,20 @@ export default function ResultsPage() {
           </div>
         </div>
       )}
+
+      {/* Clone Role Modal */}
+      {cloneModalRole && selPriv && selSvc && (
+        <CloneRoleModal
+          role={cloneModalRole}
+          privilege={selPriv}
+          service={selSvc}
+          onClose={() => setCloneModalRole(null)}
+          onSubmit={handleCloneSubmit}
+        />
+      )}
+
+      {/* Toast Notification */}
+      <CloneToast entry={toastEntry} onDismiss={() => setToastEntry(null)} />
     </div>
   )
 }
