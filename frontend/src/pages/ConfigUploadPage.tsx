@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Info, CheckCircle2, UploadCloud, Trash2, Save, FileText, Loader2, AlertCircle, Settings, BookOpen, ShieldCheck, Cpu } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle2, UploadCloud, Trash2, Save, FileText, Loader2, AlertCircle, Settings, BookOpen, ShieldCheck, Cpu } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 
 interface PrivilegeConfig {
@@ -451,7 +451,7 @@ export default function ConfigUploadPage() {
               <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold z-10 shadow-sm shadow-blue-200">01</div>
               <div>
                 <h4 className="text-[13px] font-bold text-blue-700">Upload Document</h4>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Upload the official<br/>Oracle Privileges PDF.</p>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Upload the official<br/>Service metrics record.</p>
               </div>
             </div>
             <div className="flex gap-4 relative mb-12">
@@ -475,8 +475,8 @@ export default function ConfigUploadPage() {
             <div className="flex items-center gap-3 mb-6">
               <div className="text-blue-600"><BookOpen size={24} /></div>
               <div>
-                <h2 className="text-[19px] font-bold text-slate-900">Privileges Configuration</h2>
-                <p className="text-xs text-slate-500 mt-1">Upload the Oracle Fusion Services Privileges PDF to extract and configure costed privileges using AI.</p>
+                <h2 className="text-[19px] font-bold text-slate-900">Service Metrics Configuration</h2>
+                <p className="text-xs text-slate-500 mt-1">Upload the Service metrics record PDF to extract and configure costed privileges using AI.</p>
               </div>
             </div>
 
@@ -504,8 +504,8 @@ export default function ConfigUploadPage() {
                 <FileText size={28} />
                 <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center border-[3px] border-white"><UploadCloud size={14}/></div>
               </div>
-              <h3 className="text-[17px] font-bold text-slate-900 mb-2">Upload Oracle Privileges PDF</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-8 leading-relaxed">Select the official Oracle privileges documentation. Our AI will read the PDF and extract the structured data automatically.</p>
+              <h3 className="text-[17px] font-bold text-slate-900 mb-2">Upload Service metrics record</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-8 leading-relaxed">Select the official Service metrics record documentation. Our AI will read the PDF and extract the structured data automatically.</p>
               
               <div className="flex flex-col items-center gap-3">
                 <label className="cursor-pointer flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm w-56">
@@ -648,7 +648,7 @@ export default function ConfigUploadPage() {
               <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold z-10 shadow-sm shadow-emerald-200">01</div>
               <div>
                 <h4 className="text-[13px] font-bold text-emerald-700">Upload Document</h4>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Upload the official<br/>Oracle Cost Sheet PDF.</p>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Upload the official<br/>Service pricing list record.</p>
               </div>
             </div>
             <div className="flex gap-4 relative mb-12">
@@ -672,8 +672,8 @@ export default function ConfigUploadPage() {
             <div className="flex items-center gap-3 mb-6">
               <div className="text-emerald-600"><FileText size={24} /></div>
               <div>
-                <h2 className="text-[19px] font-bold text-slate-900">Cost Sheet Configuration</h2>
-                <p className="text-xs text-slate-500 mt-1">Upload the official Oracle Cost Sheet PDF to automatically resolve service prices during analysis.</p>
+                <h2 className="text-[19px] font-bold text-slate-900">Service Pricing List Configuration</h2>
+                <p className="text-xs text-slate-500 mt-1">Upload the official Service pricing list record PDF to automatically resolve service prices during analysis.</p>
               </div>
             </div>
 
@@ -701,12 +701,12 @@ export default function ConfigUploadPage() {
                 <FileText size={28} />
                 <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center border-[3px] border-white"><UploadCloud size={14}/></div>
               </div>
-              <h3 className="text-[17px] font-bold text-slate-900 mb-2">Upload Cost Sheet</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-8 leading-relaxed">Select the official Oracle PDF cost sheet. This will be stored globally and used for all future analyses.</p>
+              <h3 className="text-[17px] font-bold text-slate-900 mb-2">Upload Service pricing list record</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-8 leading-relaxed">Select the official Service pricing list record PDF. This will be stored globally and used for all future analyses.</p>
               
               <div className="flex flex-col items-center gap-3">
                 <label className="cursor-pointer flex items-center justify-center gap-2 px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm w-64">
-                  <UploadCloud size={16}/> {costSheetFile ? 'Change Cost Sheet PDF' : 'Choose Cost Sheet PDF'}
+                  <UploadCloud size={16}/> {costSheetFile ? 'Change Service Pricing List PDF' : 'Choose Service Pricing List PDF'}
                   <input type="file" accept="application/pdf" className="hidden" onChange={handleCostSheetChange} />
                 </label>
                 

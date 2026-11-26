@@ -24,8 +24,8 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-semibold tracking-[0.18em] text-oracle-red uppercase">Oracle HCM</span>
           </div>
-          <h1 className="text-[15px] font-700 leading-tight text-navy"
-            style={{ fontWeight: 700, color: '#1a2b4a', letterSpacing: '-0.01em' }}>
+          <h1 className="text-[15px] font-700 leading-tight"
+            style={{ fontWeight: 700, color: 'var(--theme-text-main, #1a2b4a)', letterSpacing: '-0.01em' }}>
             HCM Intelligent Analytics
           </h1>
         </div>
@@ -34,12 +34,12 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
       {/* Right — Badges + icons */}
       <div className="flex items-center gap-3">
         <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-          style={{ background: '#f7eee6', color: '#ba6017' }}>
+          style={{ background: 'var(--theme-bg-hover, var(--accbg, #E7EEFF))', color: 'var(--theme-blue-text, var(--acc, #1D4ED8))' }}>
           <BarChart3 size={12} />
           AI Analytics
         </span>
         <span className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-          style={{ background: '#eef2f8', color: '#1a2b4a' }}>
+          style={{ background: 'var(--theme-bg-hover, #eef2f8)', color: 'var(--theme-text-main, #1a2b4a)' }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/>
           </svg>
@@ -50,7 +50,8 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
         {variant === 'upload' && (
           <button
             onClick={() => navigate('/')}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-slate-500 hover:text-brand-blue hover:bg-brand-pale transition-all duration-200"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
+            style={{ color: 'var(--theme-text-muted, #64748b)' }}
           >
             ← Home
           </button>
@@ -69,7 +70,7 @@ export default function Header({ variant = 'landing' }: HeaderProps) {
           <Settings size={16} />
         </button>
         <button className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-          style={{ background: 'linear-gradient(135deg, #ba6017, #d47e3b)' }}>
+          style={{ background: 'linear-gradient(135deg, var(--acc, #1D4ED8), var(--acc, #1D4ED8))' }}>
           <User size={14} />
         </button>
       </div>

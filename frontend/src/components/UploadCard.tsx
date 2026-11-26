@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from 'react'
 import {
-  Upload, FileText, CheckCircle2, X, AlertCircle,
-  RotateCcw, XCircle
+  Upload, CheckCircle2, X, AlertCircle,
+  XCircle
 } from 'lucide-react'
 
 // ── Config ─────────────────────────────────────────────────────────────────
-const SERVER_URL = 'http://localhost:3001'
+const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type CardState = 'idle' | 'dragging' | 'uploading' | 'success' | 'error'
@@ -79,56 +79,72 @@ export default function UploadCard({
   const inputRef  = useRef<HTMLInputElement>(null)
   const xhrRef    = useRef<XMLHttpRequest | null>(null)
 
-  // ── S3 upload ─────────────────────────────────────
-  async function uploadToS3(file: File) {
+  // ── Document upload via backend multipart/form-data ──
+  async function uploadDocument(file: File) {
     setCardState('uploading')
     setProgress(0)
+    setErrorMsg(null)
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    console.log(`[UploadCard] Uploading "${file.name}" (${file.size} bytes) to ${SERVER_URL}/api/upload`)
 
     try {
-      const resp = await fetch(`${SERVER_URL}/api/presigned-url`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentType: file.type || 'application/octet-stream' }),
-      })
-
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: 'Server error' }))
-        throw new Error(err.error || `Server responded ${resp.status}`)
-      }
-
-      const { uploadUrl, s3Key } = await resp.json()
-
-      await new Promise<void>((resolve, reject) => {
+      const { s3Key } = await new Promise<{ s3Key: string; filename: string }>((resolve, reject) => {
         const xhr = new XMLHttpRequest()
         xhrRef.current = xhr
 
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
-            setProgress(Math.round((e.loaded / e.total) * 100))
+            const pct = Math.round((e.loaded / e.total) * 100)
+            setProgress(pct)
           }
         })
 
         xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve()
-          else reject(new Error(`S3 returned status ${xhr.status}.`))
+          let data: any = {}
+          try {
+            data = JSON.parse(xhr.responseText || '{}')
+          } catch {
+            data = {}
+          }
+
+          if (xhr.status >= 200 && xhr.status < 300 && data.s3Key) {
+            resolve(data)
+          } else {
+            const serverError = data.error || `Server responded with status ${xhr.status}`
+            console.error(`[UploadCard] Upload failed: ${serverError}`, data)
+            reject(new Error(serverError))
+          }
         })
 
-        xhr.addEventListener('error', () => reject(new Error('Network error during upload.')))
-        xhr.addEventListener('abort', () => reject(new Error('Upload cancelled.')))
+        xhr.addEventListener('error', () => {
+          console.error(`[UploadCard] Network error connecting to ${SERVER_URL}/api/upload`)
+          reject(new Error('Network error during upload. Could not connect to the backend server.'))
+        })
 
-        xhr.open('PUT', uploadUrl)
-        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
-        xhr.send(file)
+        xhr.addEventListener('abort', () => {
+          console.warn(`[UploadCard] Upload cancelled for "${file.name}"`)
+          reject(new Error('Upload cancelled.'))
+        })
+
+        xhr.open('POST', `${SERVER_URL}/api/upload`)
+        // NOTE: Do NOT set Content-Type header when using FormData.
+        // The browser automatically sets multipart/form-data with the correct boundary parameter.
+        xhr.send(formData)
       })
 
       setProgress(100)
       setCardState('success')
       setFileInfo(prev => prev ? { ...prev, s3Key } : prev)
       onFileChange(index, file, s3Key)
+      console.log(`[UploadCard] Upload successful: "${file.name}" stored in S3 at ${s3Key}`)
 
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Upload failed.'
       if (msg.includes('cancelled')) return
+      console.error(`[UploadCard] Error uploading "${file.name}":`, err)
       setErrorMsg(msg)
       setCardState('error')
     }
@@ -137,13 +153,14 @@ export default function UploadCard({
   function processFile(file: File) {
     const err = validateFile(file, existingFiles, index, acceptedTypes, acceptedExts)
     if (err) {
+      console.warn(`[UploadCard] File validation error for "${file.name}": ${err}`)
       setErrorMsg(err)
       setCardState('error')
       return
     }
     setErrorMsg(null)
     setFileInfo({ file, name: file.name, size: file.size, type: file.type })
-    uploadToS3(file)
+    uploadDocument(file)
   }
 
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -178,7 +195,19 @@ export default function UploadCard({
     onFileChange(index, null)
   }
 
-  function removeFile() {
+  async function removeFile() {
+    if (fileInfo?.s3Key) {
+      try {
+        console.log(`[UploadCard] Removing file from S3: ${fileInfo.s3Key}`)
+        await fetch(`${SERVER_URL}/api/file`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ s3Key: fileInfo.s3Key }),
+        })
+      } catch (err) {
+        console.warn(`[UploadCard] Failed to delete file ${fileInfo.s3Key} from S3:`, err)
+      }
+    }
     setCardState('idle')
     setProgress(0)
     setFileInfo(null)
@@ -196,7 +225,7 @@ export default function UploadCard({
       <div className="flex-1 min-w-0 pr-4 pl-2">
         {cardState === 'idle' || cardState === 'dragging' ? (
           <>
-            <h3 className="font-bold text-[16px]" style={{ color: '#31231a' }}>{title}</h3>
+            <h3 className="font-bold text-[16px]" style={{ color: 'var(--ink, #0F1B2D)' }}>{title}</h3>
             <p className="text-[13px] mt-0.5 font-medium" style={{ color: '#6d5f53' }}>{description}</p>
           </>
         ) : cardState === 'uploading' ? (
@@ -230,7 +259,7 @@ export default function UploadCard({
           <button 
             onClick={() => inputRef.current?.click()}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-[14px] font-bold transition-colors hover:bg-black/5"
-            style={{ border: '1px solid #efebe4', color: '#31231a' }}
+            style={{ border: '1px solid var(--line, #E1E6EE)', color: 'var(--ink, #0F1B2D)' }}
           >
             <Upload size={16} style={{ color: '#6d5f53' }} /> Choose File
           </button>

@@ -5,6 +5,9 @@ export interface Employee {
   department: string
   status: 'active' | 'inactive' | 'on-leave'
   avatar: string
+  assignedRole?: string
+  previousRole?: string
+  isRemediated?: boolean
 }
 
 export interface Role {
@@ -14,6 +17,9 @@ export interface Role {
   licenseUsed: number
   licenseTotal: number
   employees: Employee[]
+  isRemediated?: boolean
+  originalRoleName?: string
+  remediationNote?: string
 }
 
 export interface Privilege {
