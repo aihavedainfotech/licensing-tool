@@ -398,7 +398,20 @@ async function findLatestXlsx() {
 //   - Only privileges listed in the JSON config consume a licence.
 //   - One employee with N costed privileges from the SAME service = 1 licence.
 //   - Output: hierarchy SERVICE → PRIVILEGE_NAME → ROLE_NAME → employees[]
-function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap = new Map(), activeStatusMap = new Map()) {
+function buildHierarchy(rows, costConfig, costData = [], subscribedData = new Map(), activeStatusMap = new Map()) {
+  // Handle both Map (legacy) and object { skuMap, nameMap, entries }
+  let subSkuMap = new Map();
+  let subNameMap = new Map();
+  let subEntries = [];
+
+  if (subscribedData instanceof Map) {
+    subSkuMap = subscribedData;
+  } else if (subscribedData && typeof subscribedData === 'object') {
+    subSkuMap = subscribedData.skuMap || new Map();
+    subNameMap = subscribedData.nameMap || new Map();
+    subEntries = subscribedData.entries || [];
+  }
+
   // Build a fast lookup for costed privileges from the JSON config
   // Assumes JSON structure: [{ service_name: "...", privileges: ["Priv A", "Priv B"] }]
   // Create a reverse mapping from Privilege -> Array<Service Name>
@@ -599,13 +612,20 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
 
     if (minQty < 1) minQty = 1;
 
-    if (subscribedQuantityMap.size > 0) {
-      if (!subscribedQuantityMap.has(finalSku)) {
-        continue;
-      }
+    // Lookup subscribed quantity by SKU or by normalized service name
+    let subscribedQuantity = undefined;
+    if (subSkuMap.has(finalSku)) {
+      subscribedQuantity = subSkuMap.get(finalSku);
+    } else if (sku && subSkuMap.has(sku)) {
+      subscribedQuantity = subSkuMap.get(sku);
     } else {
-      if (unitCost === 0) {
-        continue;
+      const cleanSvc = svcName.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
+      for (const [sName, info] of subNameMap.entries()) {
+        if (sName === cleanSvc || cleanSvc.includes(sName) || sName.includes(cleanSvc)) {
+          subscribedQuantity = info.qty;
+          if (!finalSku && info.partNumber) finalSku = info.partNumber;
+          break;
+        }
       }
     }
 
@@ -613,7 +633,6 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
     const billableQuantity = billingUnits * minQty;
     const totalCost = billingUnits * unitCost;
 
-    const subscribedQuantity = subscribedQuantityMap.has(finalSku) ? subscribedQuantityMap.get(finalSku) : undefined;
     const overProvisioned = subscribedQuantity !== undefined ? Math.max(0, billableQuantity - subscribedQuantity) : 0;
 
     // Calculate the actual cost of the over-provisioned units
@@ -641,6 +660,60 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
       subscribedQuantity,
       privileges,
     })
+  }
+
+  // Also include any contracted/subscribed services from the SAAS metrics report that have 0 active users
+  for (const sub of subEntries) {
+    const cleanSub = sub.serviceName.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
+    const alreadyExists = services.some(s => {
+      const cleanS = s.name.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
+      return cleanS === cleanSub || cleanS.includes(cleanSub) || cleanSub.includes(cleanS);
+    });
+
+    if (!alreadyExists) {
+      let unitCost = 0;
+      let minQty = 1;
+      let metric = '';
+      if (Array.isArray(costData)) {
+        for (const cd of costData) {
+          const cdNameLower = (cd.serviceName || '').toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
+          if (
+            (cdNameLower && (cleanSub === cdNameLower || cleanSub.includes(cdNameLower) || cdNameLower.includes(cleanSub))) ||
+            (cd.partNumber && sub.partNumber && cd.partNumber === sub.partNumber)
+          ) {
+            unitCost = parseFloat(cd.cost) || 0;
+            if (cd.minimumQuantity) minQty = parseInt(cd.minimumQuantity, 10) || 1;
+            if (cd.metric) metric = cd.metric;
+            break;
+          }
+        }
+      }
+
+      const palette = PALETTE[paletteIdx % PALETTE.length];
+      paletteIdx++;
+
+      services.push({
+        id: sub.serviceName.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
+        name: sub.serviceName,
+        sku: sub.partNumber,
+        vendor: '',
+        icon: '🏢',
+        color: palette.color,
+        bgGradient: palette.bg,
+        totalCost: 0,
+        licenseCount: 0,
+        billableQuantity: 0,
+        billingUnits: 0,
+        minimumQuantity: minQty,
+        metric,
+        unitCost,
+        overageCost: 0,
+        privilegeCount: 0,
+        overProvisioned: 0,
+        subscribedQuantity: sub.qty,
+        privileges: [],
+      });
+    }
   }
 
   services.sort((a, b) => b.licenseCount - a.licenseCount)
@@ -682,8 +755,10 @@ app.post('/api/process', async (req, res) => {
     const fetchDuration = Date.now() - startTime;
     console.log(`⏱️ [Analysis Engine] Document retrieval completed in ${fetchDuration}ms`);
 
-    // ⚡ 2. Fast Processing: Summary Sheet
-    const subscribedQuantityMap = new Map();
+    // ⚡ 2. Fast Processing: Summary Sheet (SAAS Service Usage Metrics Report)
+    const subscribedSkuMap = new Map();
+    const subscribedNameMap = new Map();
+    const subscribedEntries = [];
     if (summaryBuf) {
       try {
         const summaryWb = XLSX.read(summaryBuf, { type: 'buffer', dense: true, cellFormula: false, cellHTML: false, cellStyles: false, cellDates: false });
@@ -692,17 +767,18 @@ app.post('/api/process', async (req, res) => {
 
         for (const row of summaryRows) {
           if (Array.isArray(row) && row.length >= 7) {
-            let partNumber = typeof row[1] === 'string' ? row[1] : '';
-            if (partNumber) {
-              partNumber = partNumber.replace(/^>\s*/, '').trim();
-              const subscribedQty = parseInt(row[6], 10);
-              if (!isNaN(subscribedQty)) {
-                subscribedQuantityMap.set(partNumber, subscribedQty);
-              }
+            let partNumber = typeof row[1] === 'string' ? row[1].replace(/^>\s*/, '').trim() : '';
+            let serviceName = typeof row[2] === 'string' ? row[2].trim() : '';
+            let subscribedQty = parseInt(row[6], 10);
+            if (!isNaN(subscribedQty) && serviceName) {
+              if (partNumber) subscribedSkuMap.set(partNumber, subscribedQty);
+              const clean = serviceName.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
+              subscribedNameMap.set(clean, { partNumber, serviceName, qty: subscribedQty });
+              subscribedEntries.push({ partNumber, serviceName, qty: subscribedQty });
             }
           }
         }
-        console.log(`✅ Extracted ${subscribedQuantityMap.size} subscribed quantities from Summary Sheet`);
+        console.log(`✅ Extracted ${subscribedEntries.length} subscribed services from Summary Sheet`);
       } catch (err) {
         console.warn(`⚠️ Error processing Summary Sheet:`, err.message);
       }
@@ -738,7 +814,7 @@ app.post('/api/process', async (req, res) => {
     console.log(`   Parsed ${rows.length} rows from sheet "${sheetName}"`);
 
     // ⚡ 5. Build Hierarchy
-    cachedResult = buildHierarchy(rows, privilegesConfig, costSheetData, subscribedQuantityMap, activeStatusMap);
+    cachedResult = buildHierarchy(rows, privilegesConfig, costSheetData, { skuMap: subscribedSkuMap, nameMap: subscribedNameMap, entries: subscribedEntries }, activeStatusMap);
     const totalDuration = Date.now() - startTime;
     console.log(`✅  [Analysis Engine] Completed in ${totalDuration}ms: ${cachedResult.services.length} services, ${cachedResult.totalLicences} licences`);
 
