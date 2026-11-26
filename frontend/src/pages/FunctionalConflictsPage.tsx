@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { 
   ShieldAlert, 
   Search, 
@@ -17,7 +18,8 @@ import {
   GitCommit,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  ArrowLeft
 } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import SodRemediationModal from '../components/SodRemediationModal'
@@ -69,6 +71,7 @@ const SERVER_URL = 'http://localhost:3001'
 const PAGE_SIZE = 10
 
 export default function FunctionalConflictsPage() {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [dataLoaded, setDataLoaded] = useState(false)
   const [conflicts, setConflicts] = useState<FunctionalConflictRecord[]>([])
@@ -233,49 +236,71 @@ export default function FunctionalConflictsPage() {
   )
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--card, #ffffff)' }}>
+    <div className="flex min-h-screen" style={{ backgroundColor: 'var(--theme-bg-page, var(--bg, #F4F6FA))' }}>
       <Sidebar />
 
-      <main className="flex-1 p-8 max-w-7xl mx-auto overflow-x-hidden">
-        {/* Top Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-bold tracking-wider text-amber-700 uppercase px-2.5 py-0.5 rounded-md" style={{ background: '#fdf0e6' }}>
-                Segregation of Duties (SoD) • Privilege Engine
-              </span>
-              <span className="text-xs text-gray-500 flex items-center gap-1">
-                <Server size={12} /> {instanceHost} {dataSource ? `• ${dataSource.replace(/_/g, ' ')}` : ''}
-              </span>
-            </div>
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2.5">
-              <ShieldAlert className="text-red-600" size={26} />
-              Functional Conflicts
-            </h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Detect privilege conflicts across <span className="font-semibold text-gray-800">User → Roles → Privileges</span> (Intra-role toxic duties & Inter-role segregation violations).
-            </p>
+      <main className="flex-1 flex flex-col px-4 sm:px-10 py-8 max-w-[1440px] mx-auto w-full overflow-y-auto" style={{ backgroundColor: 'var(--theme-bg-page, var(--bg, #F4F6FA))' }}>
+        
+        {/* Navigation Breadcrumb & Back */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
+            <button onClick={() => navigate('/upload')} className="hover:underline flex items-center gap-1 cursor-pointer" style={{ color: 'var(--acc, #1D4ED8)' }}>
+              <ArrowLeft size={14} />
+              Uploads
+            </button>
+            <ChevronRight size={14} />
+            <span style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>Functional Conflicts & SoD Violations</span>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => handleFetchConflicts(true)}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 transition shadow-sm disabled:opacity-60"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              {loading ? 'Scanning Oracle...' : 'Refresh Scan'}
-            </button>
+          {/* Demo Instance Connected Badge */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold shadow-xs" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d' }}>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Server size={13} />
+            <span>Connected: <strong>{instanceHost}</strong>{dataSource ? ` • ${dataSource.replace(/_/g, ' ')}` : ''}</span>
+          </div>
+        </div>
 
-            <button
-              onClick={handleExportCsv}
-              disabled={!filteredConflicts.length}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs text-white shadow-sm transition disabled:opacity-50"
-              style={{ background: 'var(--acc, #1D4ED8)' }}
-            >
-              <Download size={14} />
-              Export CSV
-            </button>
+        {/* Page Hero Header */}
+        <div className="rounded-3xl p-8 mb-8 shadow-xs border relative overflow-hidden" style={{ borderColor: 'var(--theme-border, var(--line, #E1E6EE))', background: 'var(--theme-bg-card, #ffffff)' }}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[12px] font-bold mb-3" style={{ background: 'var(--theme-blue-bg, var(--accbg, #E7EEFF))', color: 'var(--theme-blue-text, var(--acct, #1B3FA8))' }}>
+                <ShieldAlert size={14} strokeWidth={2.5} />
+                Segregation of Duties (SoD) • Privilege Engine
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>
+                Functional Conflicts & SoD Violations
+              </h1>
+              <p className="text-[14px] mt-2 font-medium max-w-2xl leading-relaxed" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
+                Detect privilege conflicts across <span className="font-semibold" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>User → Roles → Privileges</span> (Intra-role toxic duties & Inter-role segregation violations).
+              </p>
+            </div>
+
+            <div className="shrink-0 flex flex-wrap items-center gap-2.5">
+              <button
+                onClick={() => handleFetchConflicts(true)}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs border transition shadow-sm disabled:opacity-60 cursor-pointer"
+                style={{ 
+                  background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))',
+                  borderColor: 'var(--theme-border, var(--line, #E1E6EE))',
+                  color: 'var(--theme-text-main, var(--ink, #0F1B2D))'
+                }}
+              >
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                {loading ? 'Scanning Oracle...' : 'Refresh Scan'}
+              </button>
+
+              <button
+                onClick={handleExportCsv}
+                disabled={!filteredConflicts.length}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs text-white shadow-sm transition disabled:opacity-50 cursor-pointer hover:opacity-90"
+                style={{ background: 'var(--acc, #1D4ED8)' }}
+              >
+                <Download size={14} />
+                Export CSV
+              </button>
+            </div>
           </div>
         </div>
 
@@ -286,55 +311,56 @@ export default function FunctionalConflictsPage() {
               <AlertTriangle size={18} className="text-red-600 shrink-0" />
               <span>{error}</span>
             </div>
-            <button onClick={() => handleFetchConflicts(false)} className="font-bold underline ml-4 hover:text-red-950">Retry</button>
+            <button onClick={() => handleFetchConflicts(false)} className="font-bold underline ml-4 hover:text-red-950 cursor-pointer">Retry</button>
           </div>
         )}
 
         {/* Stats Grid */}
         {stats && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="p-5 rounded-2xl bg-white border border-gray-100 shadow-sm">
-              <div className="flex items-center justify-between text-gray-500 mb-2">
+            <div className="p-5 rounded-2xl border shadow-xs" style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
+              <div className="flex items-center justify-between mb-2" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
                 <span className="text-xs font-bold uppercase tracking-wider">Total Evaluated</span>
                 <ShieldAlert size={18} className="text-amber-600" />
               </div>
-              <div className="text-3xl font-black text-gray-900">{stats.totalConflicts}</div>
-              <div className="text-xs text-gray-500 mt-1">Across all enterprise modules</div>
+              <div className="text-3xl font-black" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>{stats.totalConflicts}</div>
+              <div className="text-xs mt-1" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>Across all enterprise modules</div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white border border-purple-100 shadow-sm bg-gradient-to-br from-white to-purple-50/20">
-              <div className="flex items-center justify-between text-purple-900 mb-2">
+            <div className="p-5 rounded-2xl border shadow-xs" style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
+              <div className="flex items-center justify-between mb-2" style={{ color: '#7c3aed' }}>
                 <span className="text-xs font-bold uppercase tracking-wider">Intra-Role Conflicts</span>
-                <Layers size={18} className="text-purple-600" />
+                <Layers size={18} />
               </div>
-              <div className="text-3xl font-black text-purple-700">{stats.intraRoleCount || 0}</div>
-              <div className="text-xs text-purple-800 font-medium mt-1">Toxic duties inside single role</div>
+              <div className="text-3xl font-black text-purple-600 dark:text-purple-400">{stats.intraRoleCount || 0}</div>
+              <div className="text-xs font-medium mt-1 text-purple-700/80 dark:text-purple-300">Toxic duties inside single role</div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white border border-amber-100 shadow-sm bg-gradient-to-br from-white to-amber-50/20">
-              <div className="flex items-center justify-between text-amber-900 mb-2">
+            <div className="p-5 rounded-2xl border shadow-xs" style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
+              <div className="flex items-center justify-between mb-2" style={{ color: '#d97706' }}>
                 <span className="text-xs font-bold uppercase tracking-wider">Inter-Role Conflicts</span>
-                <GitCommit size={18} className="text-amber-600" />
+                <GitCommit size={18} />
               </div>
-              <div className="text-3xl font-black text-amber-700">{stats.interRoleCount || 0}</div>
-              <div className="text-xs text-amber-800 font-medium mt-1">Cross-role segregation violations</div>
+              <div className="text-3xl font-black text-amber-600 dark:text-amber-400">{stats.interRoleCount || 0}</div>
+              <div className="text-xs font-medium mt-1 text-amber-700/80 dark:text-amber-300">Cross-role segregation violations</div>
             </div>
 
-            <div className="p-5 rounded-2xl bg-white border border-emerald-100 shadow-sm bg-gradient-to-br from-white to-emerald-50/20">
-              <div className="flex items-center justify-between text-emerald-800 mb-2">
+            <div className="p-5 rounded-2xl border shadow-xs" style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
+              <div className="flex items-center justify-between mb-2" style={{ color: '#059669' }}>
                 <span className="text-xs font-bold uppercase tracking-wider">Succeeded / Remediated</span>
-                <CheckCircle2 size={18} className="text-emerald-600" />
+                <CheckCircle2 size={18} />
               </div>
-              <div className="text-3xl font-black text-emerald-600">{stats.succeededCount}</div>
-              <div className="text-xs text-emerald-700 font-medium mt-1">Preserved in audit records</div>
+              <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{stats.succeededCount}</div>
+              <div className="text-xs font-medium mt-1 text-emerald-700/80 dark:text-emerald-300">Preserved in audit records</div>
             </div>
           </div>
         )}
 
         {/* Filter Bar */}
-        <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="p-4 rounded-2xl border shadow-xs mb-6 flex flex-col md:flex-row items-center justify-between gap-4"
+          style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
           <div className="relative w-full md:w-80">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }} />
             <input
               type="text"
               placeholder="Search user, role, privilege, conflict..."
@@ -343,64 +369,77 @@ export default function FunctionalConflictsPage() {
                 setSearchQuery(e.target.value)
                 setCurrentPage(1)
               }}
-              className="w-full pl-10 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              className="w-full pl-10 pr-4 py-2 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              style={{
+                background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))',
+                borderColor: 'var(--theme-border, var(--line, #E1E6EE))',
+                color: 'var(--theme-text-main, var(--ink, #0F1B2D))',
+                borderWidth: '1px',
+                borderStyle: 'solid'
+              }}
             />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Conflict Scope Filter (Intra-Role vs Inter-Role) */}
+            {/* Scope */}
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-gray-500 uppercase">Scope:</span>
+              <span className="text-xs font-bold uppercase" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>Scope:</span>
               <button
                 onClick={() => { setScopeFilter('All'); setCurrentPage(1); }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${scopeFilter === 'All' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                style={scopeFilter === 'All' ? { background: 'var(--acc, #1D4ED8)', color: '#ffffff' } : { background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', color: 'var(--theme-text-muted, var(--mut, #586377))', border: '1px solid var(--theme-border, var(--line, #E1E6EE))' }}
               >
                 All
               </button>
               <button
                 onClick={() => { setScopeFilter('INTRA_ROLE'); setCurrentPage(1); }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${scopeFilter === 'INTRA_ROLE' ? 'bg-purple-100 text-purple-900 border border-purple-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                style={scopeFilter === 'INTRA_ROLE' ? { background: '#7c3aed', color: '#ffffff' } : { background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', color: 'var(--theme-text-muted, var(--mut, #586377))', border: '1px solid var(--theme-border, var(--line, #E1E6EE))' }}
               >
-                Intra-Role (Same Role)
+                Intra-Role
               </button>
               <button
                 onClick={() => { setScopeFilter('INTER_ROLE'); setCurrentPage(1); }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${scopeFilter === 'INTER_ROLE' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                style={scopeFilter === 'INTER_ROLE' ? { background: '#d97706', color: '#ffffff' } : { background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', color: 'var(--theme-text-muted, var(--mut, #586377))', border: '1px solid var(--theme-border, var(--line, #E1E6EE))' }}
               >
-                Inter-Role (Cross-Role)
+                Inter-Role
               </button>
             </div>
 
-            <div className="h-4 w-[1px] bg-gray-300 hidden sm:block" />
+            <div className="h-4 w-[1px] hidden sm:block" style={{ background: 'var(--theme-border, var(--line, #E1E6EE))' }} />
 
-            {/* Status Filter (Active vs Succeeded) */}
+            {/* Status */}
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-gray-500 uppercase">Status:</span>
+              <span className="text-xs font-bold uppercase" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>Status:</span>
               <button
                 onClick={() => { setStatusFilter('All'); setCurrentPage(1); }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${statusFilter === 'All' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                style={statusFilter === 'All' ? { background: 'var(--acc, #1D4ED8)', color: '#ffffff' } : { background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', color: 'var(--theme-text-muted, var(--mut, #586377))', border: '1px solid var(--theme-border, var(--line, #E1E6EE))' }}
               >
                 All
               </button>
               <button
                 onClick={() => { setStatusFilter('ACTIVE'); setCurrentPage(1); }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${statusFilter === 'ACTIVE' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                style={statusFilter === 'ACTIVE' ? { background: '#dc2626', color: '#ffffff' } : { background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', color: 'var(--theme-text-muted, var(--mut, #586377))', border: '1px solid var(--theme-border, var(--line, #E1E6EE))' }}
               >
                 Active
               </button>
               <button
                 onClick={() => { setStatusFilter('SUCCEEDED'); setCurrentPage(1); }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${statusFilter === 'SUCCEEDED' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                className="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                style={statusFilter === 'SUCCEEDED' ? { background: '#059669', color: '#ffffff' } : { background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', color: 'var(--theme-text-muted, var(--mut, #586377))', border: '1px solid var(--theme-border, var(--line, #E1E6EE))' }}
               >
                 Succeeded
               </button>
             </div>
 
-            <div className="h-4 w-[1px] bg-gray-300 hidden sm:block" />
+            <div className="h-4 w-[1px] hidden sm:block" style={{ background: 'var(--theme-border, var(--line, #E1E6EE))' }} />
 
-            {/* Risk Rating Filter */}
+            {/* Risk Rating */}
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-gray-500 uppercase">Risk:</span>
+              <span className="text-xs font-bold uppercase" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>Risk:</span>
               {(['All', 'High', 'Medium'] as const).map(rating => (
                 <button
                   key={rating}
@@ -408,22 +447,19 @@ export default function FunctionalConflictsPage() {
                     setRiskFilter(rating)
                     setCurrentPage(1)
                   }}
-                  className={`px-2 py-1 rounded-lg text-xs font-bold transition ${
-                    riskFilter === rating 
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                  style={riskFilter === rating ? { background: rating === 'High' ? '#dc2626' : rating === 'Medium' ? '#d97706' : 'var(--acc, #1D4ED8)', color: '#ffffff' } : { background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', color: 'var(--theme-text-muted, var(--mut, #586377))', border: '1px solid var(--theme-border, var(--line, #E1E6EE))' }}
                 >
                   {rating}
                 </button>
               ))}
             </div>
 
-            <div className="h-4 w-[1px] bg-gray-300 hidden sm:block" />
+            <div className="h-4 w-[1px] hidden sm:block" style={{ background: 'var(--theme-border, var(--line, #E1E6EE))' }} />
 
             {/* Module Filter */}
             <div className="flex items-center gap-1">
-              <span className="text-xs font-bold text-gray-500 uppercase">Module:</span>
+              <span className="text-xs font-bold uppercase" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>Module:</span>
               {(['All', 'FIN', 'HCM', 'SCM', 'SYS'] as const).map(mod => (
                 <button
                   key={mod}
@@ -431,23 +467,20 @@ export default function FunctionalConflictsPage() {
                     setModuleFilter(mod)
                     setCurrentPage(1)
                   }}
-                  className={`px-2 py-1 rounded-lg text-xs font-bold transition ${
-                    moduleFilter === mod
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer"
+                  style={moduleFilter === mod ? { background: 'var(--acc, #1D4ED8)', color: '#ffffff' } : { background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', color: 'var(--theme-text-muted, var(--mut, #586377))', border: '1px solid var(--theme-border, var(--line, #E1E6EE))' }}
                 >
                   {mod}
                 </button>
               ))}
             </div>
 
-            <div className="h-4 w-[1px] bg-gray-300 hidden sm:block" />
+            <div className="h-4 w-[1px] hidden sm:block" style={{ background: 'var(--theme-border, var(--line, #E1E6EE))' }} />
 
             {/* Sort Order Selector */}
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1">
-                <ArrowUpDown size={12} className="text-gray-400" />
+              <span className="text-xs font-bold uppercase flex items-center gap-1" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
+                <ArrowUpDown size={12} />
                 Sort:
               </span>
               <select
@@ -456,7 +489,14 @@ export default function FunctionalConflictsPage() {
                   setSortBy(e.target.value as 'user_asc' | 'user_desc' | 'rule_asc' | 'rating_desc')
                   setCurrentPage(1)
                 }}
-                className="bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-xs focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                className="rounded-lg px-2.5 py-1 text-xs font-semibold shadow-xs focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                style={{
+                  background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))',
+                  borderColor: 'var(--theme-border, var(--line, #E1E6EE))',
+                  color: 'var(--theme-text-main, var(--ink, #0F1B2D))',
+                  borderWidth: '1px',
+                  borderStyle: 'solid'
+                }}
               >
                 <option value="user_asc">Alphabetical (A → Z)</option>
                 <option value="user_desc">Alphabetical (Z → A)</option>
@@ -468,13 +508,15 @@ export default function FunctionalConflictsPage() {
         </div>
 
         {/* Main Conflicts Table */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-4">
+        <div className="rounded-2xl border shadow-xs overflow-hidden mb-4"
+          style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-700 font-bold text-xs uppercase tracking-wider">
+                <tr className="border-b font-bold text-xs uppercase tracking-wider"
+                  style={{ background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
                   <th 
-                    className="py-3.5 px-4 cursor-pointer hover:bg-gray-100/80 transition select-none"
+                    className="py-3.5 px-4 cursor-pointer hover:opacity-80 transition select-none"
                     onClick={() => setSortBy(prev => prev === 'user_asc' ? 'user_desc' : 'user_asc')}
                     title="Click to toggle alphabetical order"
                   >
@@ -485,7 +527,7 @@ export default function FunctionalConflictsPage() {
                       ) : sortBy === 'user_desc' ? (
                         <ArrowDown size={13} className="text-amber-700" />
                       ) : (
-                        <ArrowUpDown size={13} className="text-gray-400" />
+                        <ArrowUpDown size={13} style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }} />
                       )}
                       <span className="text-[10px] font-normal normal-case text-amber-700 bg-amber-50 border border-amber-200 px-1 py-0.2 rounded ml-1">
                         {sortBy === 'user_desc' ? 'Z → A' : 'A → Z'}
@@ -496,7 +538,7 @@ export default function FunctionalConflictsPage() {
                   <th className="py-3.5 px-4">Assigned Role 1 & Privilege</th>
                   <th className="py-3.5 px-4">Assigned Role 2 & Privilege</th>
                   <th 
-                    className="py-3.5 px-4 cursor-pointer hover:bg-gray-100/80 transition select-none"
+                    className="py-3.5 px-4 cursor-pointer hover:opacity-80 transition select-none"
                     onClick={() => setSortBy(prev => prev === 'rule_asc' ? 'user_asc' : 'rule_asc')}
                     title="Click to sort by Conflict Rule"
                   >
@@ -505,23 +547,23 @@ export default function FunctionalConflictsPage() {
                       {sortBy === 'rule_asc' ? (
                         <ArrowUp size={13} className="text-amber-700" />
                       ) : (
-                        <ArrowUpDown size={13} className="text-gray-400" />
+                        <ArrowUpDown size={13} style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }} />
                       )}
                     </div>
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y" style={{ borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
                 {loading && !dataLoaded ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-gray-500">
+                    <td colSpan={5} className="py-12 text-center" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
                       <RefreshCw className="animate-spin inline-block mr-2" size={18} />
                       Analyzing user privileges (Intra-role & Inter-role) from Oracle...
                     </td>
                   </tr>
                 ) : paginatedConflicts.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-gray-500">
+                    <td colSpan={5} className="py-12 text-center" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
                       No functional conflicts found matching your criteria.
                     </td>
                   </tr>
@@ -534,21 +576,22 @@ export default function FunctionalConflictsPage() {
                       <tr 
                         key={c.id} 
                         className={`transition-colors group cursor-pointer ${
-                          isSucceeded ? 'bg-emerald-50/20 hover:bg-emerald-50/40' : 'hover:bg-amber-50/30'
+                          isSucceeded ? 'bg-emerald-50/20 hover:bg-emerald-50/40' : 'hover:bg-black/5 dark:hover:bg-white/5'
                         }`}
+                        style={{ borderBottom: '1px solid var(--theme-border, var(--line, #E1E6EE))' }}
                         onClick={() => setSelectedConflict(c)}
                       >
                         {/* 1. User */}
-                        <td className="py-3.5 px-4 font-semibold text-gray-900">
+                        <td className="py-3.5 px-4 font-semibold" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>
                           <div className="flex items-center gap-1.5">
                             <span className="font-bold">{c.user}</span>
-                            <Info size={13} className="text-gray-400 group-hover:text-amber-600 transition" />
+                            <Info size={13} style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }} />
                           </div>
                           {c.userName && c.userName !== c.user && (
-                            <div className="text-xs font-normal text-gray-500">{c.userName}</div>
+                            <div className="text-xs font-normal" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>{c.userName}</div>
                           )}
                           {c.userEmail && (
-                            <div className="text-[11px] font-normal text-gray-400 truncate max-w-[160px]">{c.userEmail}</div>
+                            <div className="text-[11px] font-normal truncate max-w-[160px]" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>{c.userEmail}</div>
                           )}
                         </td>
 
@@ -573,17 +616,20 @@ export default function FunctionalConflictsPage() {
                             <span className={`px-2 py-0.5 rounded text-xs font-semibold border inline-block w-fit ${
                               isSucceeded && (c.targetRoleToRevoke === c.assignedRole1)
                                 ? 'bg-gray-100 text-gray-400 border-gray-200 line-through'
-                                : 'bg-gray-100 text-gray-800 border-gray-200'
-                            }`}>
+                                : ''
+                            }`}
+                            style={!(isSucceeded && (c.targetRoleToRevoke === c.assignedRole1)) ? { background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-text-main, var(--ink, #0F1B2D))' } : {}}>
                               {c.assignedRole1}
                             </span>
-                            <span className="text-xs text-blue-900 font-medium bg-blue-50/80 px-2 py-0.5 rounded border border-blue-100 inline-block w-fit">
+                            <span className="text-xs font-medium px-2 py-0.5 rounded border inline-block w-fit"
+                              style={{ background: 'var(--theme-blue-bg, var(--accbg, #E7EEFF))', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-blue-text, var(--acc, #1D4ED8))' }}>
                               🔑 {c.function1}
                             </span>
                             {c.oraclePrivilege1 && (
                               <span
                                 title={`Authoritative Oracle Cloud Privilege: ${c.oraclePrivilege1}`}
-                                className="font-mono text-[10px] text-blue-800 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 inline-flex items-center gap-1 font-semibold break-all leading-tight w-fit"
+                                className="font-mono text-[10px] px-1.5 py-0.5 rounded border inline-flex items-center gap-1 font-semibold break-all leading-tight w-fit"
+                                style={{ background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}
                               >
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
                                 {c.oraclePrivilege1}
@@ -646,11 +692,11 @@ export default function FunctionalConflictsPage() {
                                   </>
                                 )}
                               </span>
-                              <span className="text-xs font-bold text-gray-900 truncate">
+                              <span className="text-xs font-bold truncate" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>
                                 {c.conflict.replace(/\[(High|Medium)\]/, '').trim()}
                               </span>
                             </div>
-                            <span className="text-[11px] text-gray-500 line-clamp-2">{c.description}</span>
+                            <span className="text-[11px] line-clamp-2" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>{c.description}</span>
                           </div>
                         </td>
                       </tr>
@@ -663,7 +709,8 @@ export default function FunctionalConflictsPage() {
 
           {/* Pagination Footer */}
           {filteredConflicts.length > PAGE_SIZE && (
-            <div className="px-6 py-4 bg-gray-50/60 border-t border-gray-200 flex items-center justify-between text-xs text-gray-600">
+            <div className="px-6 py-4 border-t flex items-center justify-between text-xs"
+              style={{ background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
               <div>
                 Showing <span className="font-bold">{(currentPage - 1) * PAGE_SIZE + 1}</span> to{' '}
                 <span className="font-bold">
@@ -676,17 +723,19 @@ export default function FunctionalConflictsPage() {
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-40 transition"
+                  className="p-1.5 rounded-lg border disabled:opacity-40 transition cursor-pointer"
+                  style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span className="font-bold text-gray-700">
+                <span className="font-bold" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="p-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-40 transition"
+                  className="p-1.5 rounded-lg border disabled:opacity-40 transition cursor-pointer"
+                  style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -697,11 +746,13 @@ export default function FunctionalConflictsPage() {
 
         {/* Conflict Inspector Modal ("How it was detected") */}
         {selectedConflict && (
-          <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-2xl w-full p-6 relative animate-in fade-in zoom-in-95 duration-200">
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="rounded-2xl shadow-2xl border max-w-2xl w-full p-6 relative animate-in fade-in zoom-in-95 duration-200"
+              style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
               <button
                 onClick={() => setSelectedConflict(null)}
-                className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition"
+                className="absolute top-5 right-5 transition cursor-pointer"
+                style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}
               >
                 <X size={20} />
               </button>
@@ -725,60 +776,60 @@ export default function FunctionalConflictsPage() {
                   {selectedConflict.conflictType === 'INTRA_ROLE' ? 'Intra-Role Conflict (Single Role)' : 'Inter-Role Conflict (Cross-Role)'}
                 </span>
 
-                <span className="text-xs text-gray-500 font-medium">Module: {selectedConflict.module}</span>
+                <span className="text-xs font-medium" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>Module: {selectedConflict.module}</span>
               </div>
 
-              <h2 className="text-xl font-black text-gray-900 mb-1">
+              <h2 className="text-xl font-black mb-1" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>
                 {selectedConflict.conflict}
               </h2>
-              <p className="text-xs text-gray-500 mb-6">User: <span className="font-bold text-gray-800">{selectedConflict.user}</span> ({selectedConflict.userName || selectedConflict.userEmail})</p>
+              <p className="text-xs mb-6" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>User: <span className="font-bold" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>{selectedConflict.user}</span> ({selectedConflict.userName || selectedConflict.userEmail})</p>
 
               <div className="space-y-4 text-sm">
                 {/* Detection Logic Flow */}
-                <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200">
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-amber-900 mb-1 flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-amber-600" />
+                <div className="p-4 rounded-xl border" style={{ background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
+                  <h4 className="font-bold text-xs uppercase tracking-wider mb-1 flex items-center gap-1.5" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>
+                    <Sparkles size={14} className="text-amber-500" />
                     How This Privilege Conflict Was Detected
                   </h4>
-                  <p className="text-amber-950 font-medium text-xs leading-relaxed mb-2">
+                  <p className="font-medium text-xs leading-relaxed mb-2" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>
                     {selectedConflict.howDetected}
                   </p>
-                  <div className="text-[11px] text-amber-800 bg-white/70 p-2.5 rounded-lg border border-amber-200/60 font-mono break-all">
+                  <div className="text-[11px] p-2.5 rounded-lg border font-mono break-all" style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
                     Evaluation Path: User ({selectedConflict.user}) → Roles → Privileges ({selectedConflict.oraclePrivilege1 || selectedConflict.privilegeCode1 || 'P1'} vs {selectedConflict.oraclePrivilege2 || selectedConflict.privilegeCode2 || 'P2'})
                   </div>
                 </div>
 
                 {/* Conflicting Duties Breakdown */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/40">
+                  <div className="p-3.5 rounded-xl border" style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-bold text-blue-800 uppercase">Privilege 1</span>
+                      <span className="text-[11px] font-bold text-blue-600 uppercase">Privilege 1</span>
                       {selectedConflict.oraclePrivilege1 && (
-                        <span className="text-[10px] font-mono font-bold text-blue-800 bg-blue-100/80 px-1.5 py-0.5 rounded border border-blue-200 truncate max-w-[200px]" title={selectedConflict.oraclePrivilege1}>
+                        <span className="text-[10px] font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 truncate max-w-[200px]" title={selectedConflict.oraclePrivilege1}>
                           {selectedConflict.oraclePrivilege1}
                         </span>
                       )}
                     </div>
-                    <div className="font-bold text-gray-900 mt-1">{selectedConflict.function1}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      Granted via role: <span className="font-semibold text-gray-800">{selectedConflict.assignedRole1}</span>
+                    <div className="font-bold mt-1" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>{selectedConflict.function1}</div>
+                    <div className="text-xs mt-1" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
+                      Granted via role: <span className="font-semibold" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>{selectedConflict.assignedRole1}</span>
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/50">
+                  <div className="p-3.5 rounded-xl border" style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-bold text-amber-700 uppercase">
+                      <span className="text-[11px] font-bold text-amber-600 uppercase">
                         {selectedConflict.status === 'SUCCEEDED' ? 'Privilege 2 (Revoked via Bot)' : 'Privilege 2 (Conflicting)'}
                       </span>
                       {selectedConflict.oraclePrivilege2 && (
-                        <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100/80 px-1.5 py-0.5 rounded border border-amber-200 truncate max-w-[200px]" title={selectedConflict.oraclePrivilege2}>
+                        <span className="text-[10px] font-mono font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 truncate max-w-[200px]" title={selectedConflict.oraclePrivilege2}>
                           {selectedConflict.oraclePrivilege2}
                         </span>
                       )}
                     </div>
-                    <div className="font-bold text-gray-900 mt-1">{selectedConflict.function2}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      Granted via role: <span className="font-semibold text-gray-800">
+                    <div className="font-bold mt-1" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>{selectedConflict.function2}</div>
+                    <div className="text-xs mt-1" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>
+                      Granted via role: <span className="font-semibold" style={{ color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>
                         {selectedConflict.conflictType === 'INTRA_ROLE' ? `Same Role (${selectedConflict.assignedRole1})` : selectedConflict.assignedRole2}
                       </span>
                     </div>
@@ -787,15 +838,15 @@ export default function FunctionalConflictsPage() {
 
                 {/* Risk Description */}
                 <div>
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-gray-500 mb-1">SOX Compliance & Internal Control Risk</h4>
-                  <p className="text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs">
+                  <h4 className="font-bold text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>SOX Compliance & Internal Control Risk</h4>
+                  <p className="leading-relaxed p-3 rounded-xl border text-xs" style={{ background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}>
                     {selectedConflict.description}
                   </p>
                 </div>
 
                 {/* Remediation Status */}
                 <div>
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-gray-500 mb-1">Remediation Status</h4>
+                  <h4 className="font-bold text-xs uppercase tracking-wider mb-1" style={{ color: 'var(--theme-text-muted, var(--mut, #586377))' }}>Remediation Status</h4>
                   <div className={`flex items-center gap-2 p-3 rounded-xl font-medium text-xs ${
                     selectedConflict.status === 'SUCCEEDED'
                       ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
@@ -817,10 +868,11 @@ export default function FunctionalConflictsPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-end gap-3">
+              <div className="mt-6 pt-4 border-t flex items-center justify-end gap-3" style={{ borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
                 <button
                   onClick={() => setSelectedConflict(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold border border-gray-200 text-gray-700 hover:bg-gray-50 transition"
+                  className="px-4 py-2 rounded-xl text-xs font-bold border transition cursor-pointer hover:opacity-80"
+                  style={{ background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', borderColor: 'var(--theme-border, var(--line, #E1E6EE))', color: 'var(--theme-text-main, var(--ink, #0F1B2D))' }}
                 >
                   Close
                 </button>

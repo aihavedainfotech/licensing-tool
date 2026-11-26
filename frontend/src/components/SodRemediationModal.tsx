@@ -192,10 +192,10 @@ export default function SodRemediationModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-3xl w-full overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="rounded-2xl shadow-2xl border max-w-3xl w-full overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200" style={{ background: 'var(--theme-bg-card, #ffffff)', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
         
         {/* Top Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between" style={{ background: 'var(--soft, #F0F3F8)' }}>
+        <div className="px-6 py-4 border-b flex items-center justify-between" style={{ background: 'var(--theme-bg-hover, var(--soft, #F0F3F8))', borderColor: 'var(--theme-border, var(--line, #E1E6EE))' }}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ background: 'linear-gradient(135deg, var(--acc, #1D4ED8), var(--acc, #1D4ED8))' }}>
               <Bot size={22} className={isRunning ? 'animate-pulse' : ''} />

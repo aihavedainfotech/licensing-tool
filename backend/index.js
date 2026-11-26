@@ -520,9 +520,11 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedData = new Ma
     }
   }
   for (const [svcRaw, sku] of uniqueSvcSkuPairs) {
+    const s1 = svcRaw.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ').trim();
     for (const knownSvc of knownServices) {
-      if (svcRaw === knownSvc || svcRaw.includes(knownSvc) || knownSvc.includes(svcRaw)) {
-        svcToSku.set(knownSvc, sku)
+      const s2 = knownSvc.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (s1 === s2 || s1.replace(/ hosted named user| hosted employee/g, '').trim() === s2.replace(/ hosted named user| hosted employee/g, '').trim()) {
+        svcToSku.set(knownSvc, sku);
       }
     }
   }
@@ -612,21 +614,32 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedData = new Ma
 
     if (minQty < 1) minQty = 1;
 
-    // Lookup subscribed quantity by SKU or by normalized service name
+    // Lookup subscribed quantity by normalized service name or SKU
+    const normalizeServiceName = (s) => (s || '').toLowerCase()
+      .replace(/[\-_]/g, ' ')
+      .replace(/\b(hosted\s+named\s+user|hosted\s+employee)\b/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     let subscribedQuantity = undefined;
-    if (subSkuMap.has(finalSku)) {
-      subscribedQuantity = subSkuMap.get(finalSku);
-    } else if (sku && subSkuMap.has(sku)) {
-      subscribedQuantity = subSkuMap.get(sku);
-    } else {
-      const cleanSvc = svcName.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
-      for (const [sName, info] of subNameMap.entries()) {
-        if (sName === cleanSvc || cleanSvc.includes(sName) || sName.includes(cleanSvc)) {
-          subscribedQuantity = info.qty;
-          if (!finalSku && info.partNumber) finalSku = info.partNumber;
-          break;
-        }
+    const cleanSvc = normalizeServiceName(svcName);
+    for (const [sName, info] of subNameMap.entries()) {
+      if (normalizeServiceName(sName) === cleanSvc || normalizeServiceName(info.serviceName) === cleanSvc) {
+        subscribedQuantity = info.qty;
+        if (info.partNumber) finalSku = info.partNumber;
+        break;
       }
+    }
+
+    if (subscribedQuantity === undefined && sku && subSkuMap.has(sku)) {
+      subscribedQuantity = subSkuMap.get(sku);
+    }
+
+    // MANDATORY RULE: When a SAAS Service Usage Metrics Report is uploaded,
+    // ONLY include services that exist in the uploaded report!
+    const hasSubscribedReport = subSkuMap.size > 0 || subNameMap.size > 0;
+    if (hasSubscribedReport && subscribedQuantity === undefined) {
+      continue;
     }
 
     const billingUnits = licenseCount > 0 ? Math.ceil(licenseCount / minQty) : 0;
@@ -660,60 +673,6 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedData = new Ma
       subscribedQuantity,
       privileges,
     })
-  }
-
-  // Also include any contracted/subscribed services from the SAAS metrics report that have 0 active users
-  for (const sub of subEntries) {
-    const cleanSub = sub.serviceName.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
-    const alreadyExists = services.some(s => {
-      const cleanS = s.name.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
-      return cleanS === cleanSub || cleanS.includes(cleanSub) || cleanSub.includes(cleanS);
-    });
-
-    if (!alreadyExists) {
-      let unitCost = 0;
-      let minQty = 1;
-      let metric = '';
-      if (Array.isArray(costData)) {
-        for (const cd of costData) {
-          const cdNameLower = (cd.serviceName || '').toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
-          if (
-            (cdNameLower && (cleanSub === cdNameLower || cleanSub.includes(cdNameLower) || cdNameLower.includes(cleanSub))) ||
-            (cd.partNumber && sub.partNumber && cd.partNumber === sub.partNumber)
-          ) {
-            unitCost = parseFloat(cd.cost) || 0;
-            if (cd.minimumQuantity) minQty = parseInt(cd.minimumQuantity, 10) || 1;
-            if (cd.metric) metric = cd.metric;
-            break;
-          }
-        }
-      }
-
-      const palette = PALETTE[paletteIdx % PALETTE.length];
-      paletteIdx++;
-
-      services.push({
-        id: sub.serviceName.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
-        name: sub.serviceName,
-        sku: sub.partNumber,
-        vendor: '',
-        icon: '🏢',
-        color: palette.color,
-        bgGradient: palette.bg,
-        totalCost: 0,
-        licenseCount: 0,
-        billableQuantity: 0,
-        billingUnits: 0,
-        minimumQuantity: minQty,
-        metric,
-        unitCost,
-        overageCost: 0,
-        privilegeCount: 0,
-        overProvisioned: 0,
-        subscribedQuantity: sub.qty,
-        privileges: [],
-      });
-    }
   }
 
   services.sort((a, b) => b.licenseCount - a.licenseCount)
@@ -1942,4 +1901,5 @@ server.on('error', (err) => {
   process.exitCode = 1
 })
 
+app.buildHierarchy = buildHierarchy;
 module.exports = app;
