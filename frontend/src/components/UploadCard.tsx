@@ -261,7 +261,7 @@ export default function UploadCard({
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-[14px] font-bold transition-colors hover:bg-black/5"
             style={{ border: '1px solid var(--line, #E1E6EE)', color: 'var(--ink, #0F1B2D)' }}
           >
-            <Upload size={16} style={{ color: '#6d5f53' }} /> Choose File
+            <Upload size={16} className="text-emerald-600" /> Choose File
           </button>
         )}
         {cardState === 'uploading' && (

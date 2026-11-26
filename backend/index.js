@@ -1716,6 +1716,135 @@ app.post('/api/sod/remediate', express.json(), async (req, res) => {
   });
 });
 
+/* ── ORACLE CREDENTIALS ENDPOINTS ───────────────────────────────────────────── */
+const ORACLE_CREDS_KEY = 'config/oracle_credentials.json';
+
+// GET — load saved credentials
+app.get('/api/settings/oracle-credentials', async (req, res) => {
+  try {
+    const buf = await s3ToBuffer(ORACLE_CREDS_KEY);
+    const data = JSON.parse(buf.toString('utf-8'));
+    return res.json(data);
+  } catch (e) {
+    return res.status(404).json({ error: 'No Oracle credentials saved' });
+  }
+});
+
+// POST — save credentials to S3
+app.post('/api/settings/oracle-credentials', async (req, res) => {
+  try {
+    const { host, username, password } = req.body;
+    if (!host || !username || !password) {
+      return res.status(400).json({ error: 'host, username, and password are required' });
+    }
+    const payload = { host: host.trim().replace(/\/$/, ''), username: username.trim(), password };
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: ORACLE_CREDS_KEY,
+      Body: JSON.stringify(payload, null, 2),
+      ContentType: 'application/json',
+    }));
+    console.log('✅ Oracle credentials saved to S3');
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Error saving Oracle credentials:', err.message);
+    return res.status(500).json({ error: 'Failed to save credentials' });
+  }
+});
+
+// DELETE — remove credentials
+app.delete('/api/settings/oracle-credentials', async (req, res) => {
+  try {
+    await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: ORACLE_CREDS_KEY }));
+    console.log('🗑️ Oracle credentials deleted');
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete credentials' });
+  }
+});
+
+// POST — test connection
+// Tries multiple Oracle Fusion Cloud REST API paths in order.
+app.post('/api/settings/oracle-credentials/test', async (req, res) => {
+  try {
+    const { host, username, password } = req.body;
+    if (!host || !username || !password) {
+      return res.status(400).json({ error: 'host, username, and password are required' });
+    }
+
+    const cleanHost = host.trim().replace(/\/$/, '');
+    const authHeader = 'Basic ' + Buffer.from(`${username.trim()}:${password}`).toString('base64');
+    const headers = { 'Authorization': authHeader, 'Accept': 'application/json' };
+
+    // Oracle Fusion Cloud SaaS uses hcmRestApi/fscmRestApi, NOT /iam/governance (on-premise OIG)
+    const candidates = [
+      { path: '/hcmRestApi/scim/Roles?count=1',                    label: 'HCM SCIM Roles' },
+      { path: '/hcmRestApi/resources/11.13.18.05/roles?limit=1',   label: 'HCM REST API v11' },
+      { path: '/fscmRestApi/resources/11.13.18.05/roles?limit=1',  label: 'FSCM REST API v11' },
+      { path: '/hcmRestApi/resources/latest/roles?limit=1',        label: 'HCM REST API latest' },
+      { path: '/iam/governance/selfservice/api/v1/roles?limit=1',  label: 'OIG REST API' },
+    ];
+
+    console.log(`🔌 [Oracle Test] Connecting to ${cleanHost}...`);
+
+    let lastStatus = null;
+    for (const { path, label } of candidates) {
+      let testRes;
+      try {
+        testRes = await fetch(`${cleanHost}${path}`, {
+          headers,
+          signal: AbortSignal.timeout(12000),
+        });
+      } catch (fetchErr) {
+        const isTimeout = fetchErr.name === 'TimeoutError' || fetchErr.name === 'AbortError';
+        return res.status(503).json({
+          error: isTimeout
+            ? `Connection timed out reaching ${cleanHost}. Ensure your network/VPN can reach this host.`
+            : `Network error: ${fetchErr.message}`
+        });
+      }
+
+      lastStatus = testRes.status;
+
+      // 401/403 = host reachable but wrong credentials — stop trying paths
+      if (testRes.status === 401 || testRes.status === 403) {
+        console.warn(`⚠️  [Oracle Test] ${label} — Auth failed (${testRes.status})`);
+        return res.status(401).json({
+          error: `Wrong username or password (HTTP ${testRes.status}). The Oracle host is reachable — please check your credentials.`
+        });
+      }
+
+      // 200 = success
+      if (testRes.ok) {
+        console.log(`✅ [Oracle Test] Connected via ${label}`);
+        return res.json({ success: true, message: `Connected to Oracle Fusion successfully via ${label}` });
+      }
+
+      console.warn(`⚠️  [Oracle Test] ${label} → HTTP ${testRes.status}, trying next...`);
+    }
+
+    // All paths failed
+    console.error(`❌ [Oracle Test] All paths failed. Last HTTP: ${lastStatus}`);
+    return res.status(404).json({
+      error: `Could not connect — all Oracle API paths returned errors (last HTTP ${lastStatus}). Check the host URL is correct, e.g. https://yourcompany.fa.us2.oraclecloud.com`
+    });
+
+  } catch (err) {
+    console.error('❌ [Oracle Test] Unexpected error:', err.message);
+    return res.status(500).json({ error: err.message || 'Unexpected server error' });
+  }
+});
+
+/* ── Helper: load Oracle credentials from S3 ─────────────────────────── */
+async function loadOracleCredentials() {
+  try {
+    const buf = await s3ToBuffer(ORACLE_CREDS_KEY);
+    return JSON.parse(buf.toString('utf-8'));
+  } catch {
+    return null;
+  }
+}
+
 /* ── SERVER START ───────────────────────────────────────────────────────────── */
 const server = app.listen(PORT, () => {
   console.log('')

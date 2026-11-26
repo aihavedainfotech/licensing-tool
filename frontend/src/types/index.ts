@@ -17,6 +17,7 @@ export interface Role {
   licenseUsed: number
   licenseTotal: number
   employees: Employee[]
+  allPrivileges?: string[]   // All privilege codes from Excel data (real, not simulated)
   isRemediated?: boolean
   originalRoleName?: string
   remediationNote?: string
