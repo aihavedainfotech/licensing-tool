@@ -41,6 +41,21 @@ export default function AnalyzeButton({ uploadedCount }: AnalyzeButtonProps) {
       setProcessing(false)
       navigate('/results')
     } catch (err: unknown) {
+      // Resilience check: if server completed analysis and cache is ready, navigate directly to results
+      try {
+        const checkResp = await fetch(`${SERVER_URL}/api/analysis-results`)
+        if (checkResp.ok) {
+          const checkData = await checkResp.json()
+          if (checkData?.services?.length > 0) {
+            setProcessing(false)
+            navigate('/results')
+            return
+          }
+        }
+      } catch {
+        // ignore check error
+      }
+
       const msg = err instanceof Error ? err.message : 'Processing failed'
       setError(msg)
       setProcessing(false)
