@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, Sparkles, Loader2, AlertCircle } from 'lucide-react'
+import { ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useFiles } from '../context/FileContext'
 
@@ -47,19 +47,17 @@ export default function AnalyzeButton({ uploadedCount }: AnalyzeButtonProps) {
     }
   }
 
-  const allLabel = 'Analyse Document'
-
-  let badgeColor = '#fffbeb'
-  let badgeText = '#d97706'
-  let badgeBorder = '#fde68a'
-  let dotColor = '#fbbf24'
+  let badgeColor = 'var(--accbg, #E7EEFF)'
+  let badgeText = 'var(--acct, #1B3FA8)'
+  let badgeBorder = 'var(--line, #E1E6EE)'
+  let dotColor = 'var(--acc, #1D4ED8)'
   let badgeMessage = 'Document uploaded — ready to analyse!'
 
   if (hasXlsx) {
-    badgeColor = '#f0fdf4'
-    badgeText = '#059669'
-    badgeBorder = '#bbf7d0'
-    dotColor = '#34d399'
+    badgeColor = 'var(--gb, #E4F5EA)'
+    badgeText = 'var(--gt, #0E6B38)'
+    badgeBorder = 'var(--line, #E1E6EE)'
+    dotColor = 'var(--gt, #0E6B38)'
     badgeMessage = `Document uploaded — ready to analyse!`
   } 
 
@@ -82,8 +80,8 @@ export default function AnalyzeButton({ uploadedCount }: AnalyzeButtonProps) {
       <button
         onClick={handleClick}
         disabled={!isEnabled}
-        className="w-full flex items-center justify-center gap-2 px-10 py-4 rounded-xl text-[16px] font-bold text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-700 shadow-sm"
-        style={{ fontSize: '15px', letterSpacing: '0.01em' }}
+        className="w-full flex items-center justify-center gap-2 px-10 py-4 rounded-xl text-[15px] font-bold text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+        style={{ background: 'var(--acc, #1D4ED8)', letterSpacing: '0.01em' }}
       >
         {processing ? (
           <>
@@ -103,16 +101,16 @@ export default function AnalyzeButton({ uploadedCount }: AnalyzeButtonProps) {
           <div className="flex gap-1.5">
             {Array.from({ length: 7 }).map((_, i) => (
               <div key={i} className="w-1.5 rounded-full"
-                style={{ background: `hsl(${200 + i * 8}, 70%, 50%)`, animation: `float ${0.6 + i * 0.1}s ease-in-out ${i * 0.1}s infinite`, height: '20px' }} />
+                style={{ background: `hsl(${220 + i * 5}, 80%, 55%)`, animation: `float ${0.6 + i * 0.1}s ease-in-out ${i * 0.1}s infinite`, height: '20px' }} />
             ))}
           </div>
-          <p className="text-xs font-medium" style={{ color: '#64748b' }}>Parsing your XLSX and building licence hierarchy…</p>
+          <p className="text-xs font-medium" style={{ color: 'var(--mut, #586377)' }}>Parsing your XLSX and building licence hierarchy…</p>
         </div>
       )}
 
       {error && (
         <div className="flex items-start gap-2 px-4 py-3 rounded-xl max-w-sm text-xs animate-fade-in-up"
-          style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+          style={{ background: 'var(--rb, #FDEBEA)', color: 'var(--rt, #B3261E)', border: '1px solid var(--line, #E1E6EE)' }}>
           <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
@@ -120,7 +118,7 @@ export default function AnalyzeButton({ uploadedCount }: AnalyzeButtonProps) {
 
       {/* Hint when files are missing */}
       {!hasXlsx && !processing && uploadedCount === 0 && (
-        <p className="text-[13px] font-medium text-center" style={{ color: '#6d5f53' }}>
+        <p className="text-[13px] font-medium text-center" style={{ color: 'var(--mut, #586377)' }}>
           Upload your XLSX users and roles document to begin
         </p>
       )}

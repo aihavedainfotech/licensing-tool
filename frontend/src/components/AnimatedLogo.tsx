@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function AnimatedLogo({ size = 40 }: { size?: number }) {
   return (
     <div className="logo-container" style={{ width: size, height: size, position: 'relative', flexShrink: 0, cursor: 'pointer' }}>

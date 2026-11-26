@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Info, Bell, ChevronDown, Users, FileText, ShieldCheck, Cloud, ArrowUp, Folder, Heart, Sparkles, CheckCircle2, Upload } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Info, Bell, ChevronDown, Users, FileText, ShieldCheck, Cloud, ArrowUp, Folder, Heart, Sparkles, CheckCircle2, UserCheck, ArrowRight } from 'lucide-react'
 import UploadCard from '../components/UploadCard'
 import AnalyzeButton from '../components/AnalyzeButton'
 import { useFiles } from '../context/FileContext'
@@ -14,8 +15,8 @@ const CARDS = [
     icon: <Users size={24} strokeWidth={2} />
   },
   {
-    title: 'Summary Sheet',
-    description: 'Upload your summary sheet (.xlsx, .pdf)',
+    title: 'SAAS Service usage metric',
+    description: 'Upload your SAAS service usage metric (.xlsx, .pdf)',
     acceptedTypes: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'application/pdf'],
     acceptedExts: ['.xlsx', '.xls', '.pdf'],
     icon: <FileText size={24} strokeWidth={2} />
@@ -30,6 +31,7 @@ const CARDS = [
 ]
 
 export default function UploadPage() {
+  const navigate = useNavigate()
   const { files, setFile } = useFiles()
   const [toast, setToast] = useState<string | null>(null)
 
@@ -44,23 +46,39 @@ export default function UploadPage() {
   const uploadedCount = files.filter(Boolean).length
 
   return (
-    <div className="h-screen w-screen flex overflow-hidden font-sans bg-white text-slate-800">
+    <div className="min-h-screen flex bg-white font-sans">
       <Sidebar />
 
-      <main className="flex-1 flex flex-col px-6 lg:px-12 py-6 lg:py-8 w-full h-screen overflow-hidden justify-between max-w-[1400px] mx-auto bg-white">
+      <main className="flex-1 flex flex-col px-4 sm:px-12 py-10 max-w-[1200px] mx-auto w-full overflow-y-auto" style={{ backgroundColor: 'var(--bg, #F4F6FA)' }}>
         
+        {/* Top Header - Admin */}
+        <div className="absolute top-8 right-8 flex items-center gap-4">
+          <button className="text-slate-600 hover:text-slate-900 transition-colors">
+            <Bell size={20} style={{ color: 'var(--ink, #0F1B2D)' }} />
+          </button>
+          <div className="flex items-center gap-2 cursor-pointer">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ background: 'var(--acc, #1D4ED8)' }}>
+              A
+            </div>
+            <span className="font-bold text-sm" style={{ color: 'var(--ink, #0F1B2D)' }}>Admin</span>
+            <ChevronDown size={16} style={{ color: 'var(--mut, #586377)' }} />
+          </div>
+        </div>
+
         {/* Page Header */}
-        <div className="mb-4 text-center mx-auto">
-          <h1 className="text-3xl lg:text-[36px] font-black tracking-tight leading-tight mb-2 text-slate-900">
-            HCM Document Intelligence
+        <div className="mb-8 mt-4 text-center mx-auto">
+          <h1 className="text-3xl sm:text-[38px] font-black tracking-tight leading-tight mb-4"
+            style={{ color: 'var(--ink, #0F1B2D)' }}>
+            Licensing Optimizer Tool
           </h1>
-          <p className="text-[15px] max-w-[550px] mx-auto leading-relaxed font-medium text-slate-500">
-            Upload your HCM documents for AI-powered analysis.<br className="hidden sm:inline" /> Large files supported — no size limits.
+          <p className="text-[16px] max-w-[500px] mx-auto leading-relaxed font-medium" style={{ color: 'var(--mut, #586377)' }}>
+            Upload your HCM documents for AI-powered analysis.<br />
+            Large files are fully supported — no size limits.
           </p>
         </div>
 
         {/* Format Info Bar */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5 mb-6">
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
           {[
             { fmt: 'PDF', color: '#dc2626', icon: '📄' },
             { fmt: 'DOCX', color: '#2563eb', icon: '📄' },
@@ -68,145 +86,170 @@ export default function UploadPage() {
             { fmt: 'CSV', color: '#475569', icon: '📊' }
           ].map(({ fmt, color, icon }) => (
             <span key={fmt}
-              className="px-3 py-1.5 rounded-lg text-[12px] font-bold tracking-wide flex items-center gap-2 bg-white text-slate-700 border border-slate-200 shadow-sm">
+              className="px-3 py-1.5 rounded-lg text-[12px] font-bold tracking-wide flex items-center gap-2"
+              style={{ background: 'var(--card, #ffffff)', color: 'var(--ink, #0F1B2D)', border: '1px solid var(--line, #E1E6EE)', boxShadow: '0 1px 2px rgba(15,27,45,0.05)' }}>
               <span className="text-sm opacity-100" style={{ color }}>{icon}</span>
               {fmt}
             </span>
           ))}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold ml-1 bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <Info size={14} className="opacity-90 text-emerald-600" />
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-bold ml-2"
+            style={{ background: 'var(--accbg, #E7EEFF)', color: 'var(--acct, #1B3FA8)', border: '1px solid var(--line, #E1E6EE)' }}>
+            <Info size={14} className="opacity-90" />
             Large file support enabled
           </div>
         </div>
 
         {/* Main Content Area */}
-        <div className="w-full flex flex-col lg:flex-row gap-8 items-stretch justify-center flex-1 min-h-0 mb-2">
+        <div className="w-full flex flex-col lg:flex-row gap-12 items-start justify-center">
           
           {/* Upload Container (Left) */}
-          <div className="w-full lg:w-1/2 max-w-[560px] flex flex-col justify-between">
-            <div>
-              <h2 className="text-[17px] font-black mb-1 text-slate-900">Upload Your Documents</h2>
-              <p className="text-[13px] mb-4 font-medium text-slate-500">All three documents are required for complete analysis.</p>
-            </div>
+          <div className="w-full max-w-[600px]">
+            <h2 className="text-[18px] font-black mb-1" style={{ color: 'var(--ink, #0F1B2D)' }}>Upload Your Documents</h2>
+            <p className="text-[13px] mb-6 font-medium" style={{ color: 'var(--mut, #586377)' }}>All three documents are required for complete analysis.</p>
 
-            <div className="relative pl-5 flex-1 flex flex-col justify-between">
+            <div className="relative pl-6">
               {/* Connecting Vertical Line */}
-              <div className="absolute left-[35px] top-6 bottom-[110px] w-px border-l border-dashed border-slate-200" />
+              <div className="absolute left-[39px] top-6 bottom-[140px] w-px border-l border-dashed" style={{ borderColor: 'var(--line, #E1E6EE)' }} />
               
-              <div className="flex flex-col gap-4 relative justify-around flex-1">
-                {CARDS.map((card, i) => {
-                  const stepBg = i === 0 ? 'bg-blue-600 shadow-blue-200' : i === 1 ? 'bg-emerald-600 shadow-emerald-200' : 'bg-indigo-600 shadow-indigo-200'
-                  return (
-                    <div key={i} className="flex gap-4 relative items-center">
-                      {/* Step Number */}
-                      <div className="flex flex-col items-center z-10">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black text-white shadow-sm ${stepBg}`}>
-                          0{i + 1}
-                        </div>
-                      </div>
-
-                      {/* Card Content */}
-                      <div className="flex-1 bg-white rounded-2xl flex items-center p-3.5 border border-slate-200 shadow-sm">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ml-1 mr-3 bg-emerald-50 text-emerald-600">
-                          {card.icon}
-                        </div>
-                        <UploadCard
-                          index={i}
-                          title={card.title}
-                          description={card.description}
-                          onFileChange={handleFileChange}
-                          existingFiles={files}
-                          acceptedTypes={card.acceptedTypes}
-                          acceptedExts={card.acceptedExts}
-                        />
+              <div className="flex flex-col gap-5 relative">
+                {CARDS.map((card, i) => (
+                  <div key={i} className="flex gap-4 relative">
+                    {/* Step Number */}
+                    <div className="flex flex-col items-center z-10 pt-4">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black text-white shadow-sm" style={{ background: 'var(--acc, #1D4ED8)' }}>
+                        0{i + 1}
                       </div>
                     </div>
-                  )
-                })}
+
+                    {/* Card Content */}
+                    <div className="flex-1 bg-white rounded-2xl flex items-center p-3" style={{ border: '1px solid var(--line, #E1E6EE)', boxShadow: '0 2px 8px rgba(15,27,45,0.04)' }}>
+                      <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ml-1 mr-2" style={{ background: 'var(--accbg, #E7EEFF)', color: 'var(--acct, #1B3FA8)' }}>
+                        {card.icon}
+                      </div>
+                      <UploadCard
+                        index={i}
+                        title={card.title}
+                        description={card.description}
+                        onFileChange={handleFileChange}
+                        existingFiles={files}
+                        acceptedTypes={card.acceptedTypes}
+                        acceptedExts={card.acceptedExts}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* Analyze Button */}
-              <div className="mt-5 ml-12">
+              <div className="mt-8 ml-12">
                 <AnalyzeButton uploadedCount={uploadedCount} />
+              </div>
+
+              {/* User Audit Section */}
+              <div 
+                onClick={() => navigate('/user-audit')}
+                className="mt-6 ml-12 p-4 rounded-2xl cursor-pointer transition-all duration-300 hover:shadow-md hover:border-[var(--acc)]/50 group flex items-center justify-between"
+                style={{ background: 'var(--card, #ffffff)', border: '1px solid var(--line, #E1E6EE)' }}
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105" style={{ background: 'var(--accbg, #E7EEFF)', color: 'var(--acct, #1B3FA8)' }}>
+                    <UserCheck size={22} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-[14px]" style={{ color: 'var(--ink, #0F1B2D)' }}>User Audit & Activity Intelligence</h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ background: 'var(--gb, #E4F5EA)', color: 'var(--gt, #0E6B38)', border: '1px solid var(--line, #E1E6EE)' }}>Live Oracle API</span>
+                    </div>
+                    <p className="text-[12px] font-medium mt-0.5" style={{ color: 'var(--mut, #586377)' }}>
+                      Audit creation dates, email, roles & activity status (Yes/No) from Demo Instance.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-[13px] transition-all group-hover:translate-x-1" style={{ color: 'var(--acct, #1B3FA8)', background: 'var(--soft, #F0F3F8)' }}>
+                  <span>Open Audit</span>
+                  <ArrowRight size={15} />
+                </div>
               </div>
 
             </div>
           </div>
 
           {/* Instructions Panel (Right) */}
-          <div className="w-full lg:w-1/2 max-w-[560px] rounded-3xl p-6 lg:p-7 relative overflow-hidden flex flex-col justify-between h-full lg:mt-14 bg-slate-50 border border-slate-100 shadow-sm">
-            <div>
-              <h3 className="text-[16px] font-black mb-4 flex items-center gap-2 text-slate-900">
-                <div className="rounded-full flex items-center justify-center p-[2px] border-2 border-emerald-600 text-emerald-600">
-                  <Info size={15} className="text-emerald-600" />
-                </div>
-                Upload Guide
-              </h3>
+          <div className="w-full flex-1 min-w-[320px] rounded-3xl p-8 mt-10 relative overflow-hidden" style={{ background: 'var(--card, #ffffff)', border: '1px solid var(--line, #E1E6EE)' }}>
+            <h3 className="text-[16px] font-black mb-6 flex items-center gap-2" style={{ color: 'var(--ink, #0F1B2D)' }}>
+              <div className="rounded-full flex items-center justify-center p-[2px]" style={{ border: '2px solid var(--acc, #1D4ED8)' }}>
+                <Info size={16} style={{ color: 'var(--acc, #1D4ED8)' }} />
+              </div>
+              Upload Guide
+            </h3>
+            
+            <div className="space-y-6">
+              <div className="pb-6" style={{ borderBottom: '1px solid var(--line, #E1E6EE)' }}>
+                <h4 className="text-[14px] font-bold mb-1.5" style={{ color: 'var(--ink, #0F1B2D)' }}>1. Users & Roles</h4>
+                <p className="text-[13px] leading-relaxed font-medium" style={{ color: 'var(--mut, #586377)' }}>
+                  Upload an <span className="font-bold" style={{ color: 'var(--ink, #0F1B2D)' }}>.xlsx</span> or <span className="font-bold" style={{ color: 'var(--ink, #0F1B2D)' }}>.xls</span> file containing your complete list of active employees, their roles, and privileges.
+                </p>
+              </div>
               
-              <div className="space-y-4">
-                <div className="pb-3.5 border-b border-slate-200">
-                  <h4 className="text-[14px] font-bold mb-1 text-slate-900">1. Users & Roles</h4>
-                  <p className="text-[13px] leading-relaxed font-medium text-slate-600">
-                    Upload an <span className="font-bold text-slate-900">.xlsx</span> or <span className="font-bold text-slate-900">.xls</span> file containing your complete list of active employees, roles, and privileges.
-                  </p>
-                </div>
-                
-                <div className="pb-3.5 border-b border-slate-200">
-                  <h4 className="text-[14px] font-bold mb-1 text-slate-900">2. Summary Sheet</h4>
-                  <p className="text-[13px] leading-relaxed font-medium text-slate-600">
-                    Upload pricing configuration or overall license summary sheet (<span className="font-bold text-slate-900">.xlsx, .xls, .pdf</span>).
-                  </p>
-                </div>
-                
-                <div>
-                  <h4 className="text-[14px] font-bold mb-1 text-slate-900">3. User Active Status</h4>
-                  <p className="text-[13px] leading-relaxed font-medium text-slate-600">
-                    Upload an <span className="font-bold text-slate-900">.xlsx</span> or <span className="font-bold text-slate-900">.xls</span> file that defines active, suspended, or inactive users for cost calculation.
-                  </p>
-                </div>
+              <div className="pb-6" style={{ borderBottom: '1px solid var(--line, #E1E6EE)' }}>
+                <h4 className="text-[14px] font-bold mb-1.5" style={{ color: 'var(--ink, #0F1B2D)' }}>2. SAAS Service usage metric</h4>
+                <p className="text-[13px] leading-relaxed font-medium" style={{ color: 'var(--mut, #586377)' }}>
+                  Upload your SAAS service usage metric or overall license summary sheet.<br/>
+                  Supported formats: <span className="font-bold" style={{ color: 'var(--ink, #0F1B2D)' }}>.xlsx, .xls, .pdf</span>.
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="text-[14px] font-bold mb-1.5" style={{ color: 'var(--ink, #0F1B2D)' }}>3. User Active Status</h4>
+                <p className="text-[13px] leading-relaxed font-medium" style={{ color: 'var(--mut, #586377)' }}>
+                  Upload an <span className="font-bold" style={{ color: 'var(--ink, #0F1B2D)' }}>.xlsx</span> or <span className="font-bold" style={{ color: 'var(--ink, #0F1B2D)' }}>.xls</span> file that defines which users are active, suspended, or inactive.<br/><br/>
+                  This is crucial for accurate cost calculation.
+                </p>
               </div>
             </div>
 
             {/* Illustration Area */}
-            <div className="mt-4 h-[150px] flex justify-center items-end relative opacity-90">
+            <div className="mt-14 h-[200px] flex justify-center items-end relative opacity-90">
               
               {/* Sparkles Background */}
-              <Sparkles size={18} className="absolute top-2 left-10 opacity-60 text-blue-400 fill-blue-400" />
-              <Sparkles size={15} className="absolute bottom-8 left-4 opacity-40 text-blue-400 fill-blue-400" />
-              <Sparkles size={20} className="absolute top-0 right-16 opacity-50 text-blue-400 fill-blue-400" />
-              <Sparkles size={16} className="absolute bottom-12 right-6 opacity-60 text-blue-400 fill-blue-400" />
+              <Sparkles size={20} className="absolute top-4 left-10 opacity-60 text-[#3B6CF0]" />
+              <Sparkles size={16} className="absolute bottom-12 left-4 opacity-40 text-[#3B6CF0]" />
+              <Sparkles size={24} className="absolute top-0 right-16 opacity-50 text-[#3B6CF0]" />
+              <Sparkles size={18} className="absolute bottom-16 right-6 opacity-60 text-[#3B6CF0]" />
 
               {/* Connecting Lines */}
-              <div className="absolute top-[45px] left-1/2 -translate-x-1/2 w-px h-10 border-l-2 border-dashed border-slate-300" />
+              <div className="absolute top-[60px] left-1/2 -translate-x-1/2 w-px h-12 border-l-2 border-dashed" style={{ borderColor: 'var(--line, #E1E6EE)' }} />
+              <div className="absolute top-[130px] left-1/2 -translate-x-1/2 w-32 h-px border-t-2 border-dashed" style={{ borderColor: 'var(--line, #E1E6EE)' }} />
 
               {/* Cloud (Top Center) */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 flex items-center justify-center z-20">
-                <Cloud size={72} className="text-blue-600 fill-blue-600" />
-                <ArrowUp size={24} className="absolute text-white stroke-[3] mt-1" />
+                <Cloud size={85} style={{ color: 'var(--acc, #1D4ED8)', fill: 'var(--acc, #1D4ED8)' }} />
+                <ArrowUp size={28} className="absolute" style={{ color: '#ffffff', strokeWidth: 3, marginTop: 5 }} />
               </div>
 
               {/* Left File (XLSX) */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-[85px] z-10 flex flex-col items-center">
-                <FileText size={54} className="text-slate-300 fill-slate-50" />
-                <span className="absolute bottom-1 px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm bg-emerald-600 text-white">XLSX</span>
+              <div className="absolute bottom-4 left-1/2 -translate-x-[90px] z-10 flex flex-col items-center">
+                <FileText size={65} style={{ color: 'var(--line, #E1E6EE)', fill: 'var(--soft, #F0F3F8)' }} />
+                <span className="absolute bottom-2 px-2 py-0.5 rounded text-[9px] font-bold shadow-sm" style={{ background: '#388e3c', color: 'white' }}>XLSX</span>
               </div>
 
               {/* Right File (PDF) */}
-              <div className="absolute bottom-4 left-1/2 translate-x-[40px] z-10 flex flex-col items-center">
-                <FileText size={46} className="text-slate-300 fill-slate-50" />
-                <span className="absolute bottom-1 -right-3 px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm bg-red-600 text-white">PDF</span>
+              <div className="absolute bottom-6 left-1/2 translate-x-[40px] z-10 flex flex-col items-center">
+                <FileText size={55} style={{ color: '#e6d5c3', fill: '#f4eee8' }} />
+                <span className="absolute bottom-2 -right-4 px-2 py-0.5 rounded text-[9px] font-bold shadow-sm" style={{ background: '#d32f2f', color: 'white' }}>PDF</span>
               </div>
 
               {/* Center Folder */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-[18px] z-30 flex items-center justify-center">
-                <Folder size={72} className="text-indigo-400 fill-indigo-100" />
-                <Heart size={14} className="absolute text-indigo-600 fill-indigo-600 mt-1" />
+              <div className="absolute bottom-0 left-1/2 -translate-x-[20px] z-30 flex items-center justify-center">
+                <Folder size={85} style={{ color: '#a69076', fill: '#a69076' }} />
+                <Heart size={16} className="absolute mt-2" style={{ color: '#ffffff', fill: '#ffffff' }} />
               </div>
               
             </div>
           </div>
 
         </div>
+
 
       </main>
 

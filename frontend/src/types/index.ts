@@ -5,6 +5,9 @@ export interface Employee {
   department: string
   status: 'active' | 'inactive' | 'on-leave'
   avatar: string
+  assignedRole?: string
+  previousRole?: string
+  isRemediated?: boolean
 }
 
 export interface Role {
@@ -15,6 +18,9 @@ export interface Role {
   licenseTotal: number
   employees: Employee[]
   allPrivileges?: string[]   // All privilege codes from Excel data (real, not simulated)
+  isRemediated?: boolean
+  originalRoleName?: string
+  remediationNote?: string
 }
 
 export interface Privilege {

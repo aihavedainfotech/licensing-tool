@@ -1,37 +1,39 @@
-﻿require('dotenv').config()
+require('dotenv').config()
 
-const express   = require('express')
-const cors      = require('cors')
+const express = require('express')
+const cors = require('cors')
+const fs = require('fs')
+const path = require('path')
 const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3')
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner')
-const { v4: uuidv4 }  = require('uuid')
+const { v4: uuidv4 } = require('uuid')
 const XLSX = require('xlsx')
 const multer = require('multer')
 const { PDFParse } = require('pdf-parse')
-const { VertexAI } = require('@google-cloud/vertexai');
+const { GoogleGenAI } = require('@google/genai');
+const { executeOracleRoleRemediation, executeHierarchyRemediation, getJobStatus, getAllJobs } = require('./services/oracleSecurityRpa');
 
-const vertex_ai = new VertexAI({ project: process.env.GCP_PROJECT_ID || 'project-b7e4de28-72cd-4ca3-92a', location: 'us-central1' });
+const genAI = new GoogleGenAI({
+  vertexai: true,
+  project: process.env.GCP_PROJECT_ID || 'project-b7e4de28-72cd-4ca3-92a',
+  location: 'us-central1',
+});
 
 async function generateAIContent(selectedModel, systemPrompt, userPrompt, temperature, isJson) {
   if (selectedModel.startsWith('gemini')) {
-    const genModel = vertex_ai.getGenerativeModel({
+    const resp = await genAI.models.generateContent({
       model: selectedModel,
-      generationConfig: {
+      contents: userPrompt || 'Proceed.',
+      config: {
         temperature,
         responseMimeType: isJson ? "application/json" : "text/plain",
-      },
-      systemInstruction: { parts: [{ text: systemPrompt }] }
+        systemInstruction: systemPrompt,
+      }
     });
-    
-    const request = {
-      contents: [{ role: 'user', parts: [{ text: userPrompt || 'Proceed.' }] }]
-    };
-    
-    const resp = await genModel.generateContent(request);
-    const content = resp.response.candidates[0].content.parts[0].text;
-    
+    const content = resp.text;
+
     // Parse usage
-    const usageMetadata = resp.response.usageMetadata || {};
+    const usageMetadata = resp.usageMetadata || {};
     return {
       content,
       usage: {
@@ -46,7 +48,7 @@ async function generateAIContent(selectedModel, systemPrompt, userPrompt, temper
     if (userPrompt) {
       messages.push({ role: 'user', content: userPrompt });
     }
-    
+
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
@@ -60,12 +62,12 @@ async function generateAIContent(selectedModel, systemPrompt, userPrompt, temper
         response_format: isJson ? { type: "json_object" } : undefined
       })
     });
-    
+
     if (!response.ok) {
       const errText = await response.text();
       throw new Error(`DeepSeek API Error: ${errText}`);
     }
-    
+
     const data = await response.json();
     return {
       content: data.choices[0].message.content,
@@ -76,56 +78,228 @@ async function generateAIContent(selectedModel, systemPrompt, userPrompt, temper
 // Configure multer for memory storage
 const upload = multer({ storage: multer.memoryStorage() })
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Validate required env vars on startup ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Validate required env vars on startup Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 const REQUIRED = ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'S3_BUCKET_NAME']
-const missing  = REQUIRED.filter(k => !process.env[k])
+const missing = REQUIRED.filter(k => !process.env[k])
 if (missing.length) {
-  console.error('ÃƒÂ¢Ã‚ÂÃ…â€™  Missing required environment variables:', missing.join(', '))
-  console.error('    Copy server/.env.example ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ server/.env and fill in your values.')
+  console.error('Ã¢ÂÅ’  Missing required environment variables:', missing.join(', '))
+  console.error('    Copy server/.env.example Ã¢â€ â€™ server/.env and fill in your values.')
   process.exit(1)
 }
 
-const PORT   = process.env.PORT            || 3001
+const PORT = process.env.PORT || 3001
 const BUCKET = process.env.S3_BUCKET_NAME
 const ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173'
 const CONFIG_S3_KEY = 'config/oracle_fusion_services_privileges.json'
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ AWS S3 client ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ AWS S3 client Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
-    accessKeyId:     process.env.AWS_ACCESS_KEY_ID,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
   requestChecksumCalculation: 'WHEN_REQUIRED',
 })
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Express app ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* ── High-Performance In-Memory Buffer & Config Caches ────────────────────── */
+const uploadedBuffersCache = new Map();
+
+function cacheUploadedBuffer(key, buffer) {
+  uploadedBuffersCache.set(key, { buffer, timestamp: Date.now() });
+  // Keep up to 30 recent files, prune expired (> 45 mins)
+  const now = Date.now();
+  for (const [k, v] of uploadedBuffersCache.entries()) {
+    if (now - v.timestamp > 45 * 60 * 1000) uploadedBuffersCache.delete(k);
+  }
+}
+
+function getCachedBuffer(key) {
+  if (!key) return null;
+  const item = uploadedBuffersCache.get(key);
+  if (!item) return null;
+  if (Date.now() - item.timestamp > 45 * 60 * 1000) {
+    uploadedBuffersCache.delete(key);
+    return null;
+  }
+  return item.buffer;
+}
+
+let cachedPrivilegesConfig = null;
+let cachedCostSheetData = null;
+
+async function getCostSheetData() {
+  if (cachedCostSheetData && Array.isArray(cachedCostSheetData)) return cachedCostSheetData;
+  try {
+    const buf = await s3ToBuffer('config/global_cost_sheet_data.json');
+    cachedCostSheetData = JSON.parse(buf.toString('utf-8'));
+    console.log(`✅ Loaded global cost sheet data: ${cachedCostSheetData.length} prices`);
+    return cachedCostSheetData;
+  } catch (e) {
+    console.log('⚠️ No global cost sheet data found. Proceeding without costs.');
+    return [];
+  }
+}
+
+async function getPrivilegesConfig() {
+  if (cachedPrivilegesConfig && Array.isArray(cachedPrivilegesConfig)) return cachedPrivilegesConfig;
+  try {
+    console.log(`⚙️    Fetching config from S3: ${CONFIG_S3_KEY}`);
+    const buf = await s3ToBuffer(CONFIG_S3_KEY);
+    const parsedConfig = JSON.parse(buf.toString('utf-8'));
+    cachedPrivilegesConfig = parsedConfig.services || parsedConfig;
+    return cachedPrivilegesConfig;
+  } catch (err) {
+    console.warn(`⚠️    Config not found in S3 or error reading it:`, err.message);
+    return [];
+  }
+}
+
+async function getBuffer(key) {
+  if (!key) return null;
+  const fast = getCachedBuffer(key);
+  if (fast) {
+    console.log(`⚡ [Fast Buffer Cache] Instant 0ms load for: ${key}`);
+    return fast;
+  }
+  console.log(`📥 [S3 Fetch] Downloading from S3: ${key}`);
+  const buf = await s3ToBuffer(key);
+  cacheUploadedBuffer(key, buf);
+  return buf;
+}
+
+
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Express app Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 const app = express()
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5175',
+  ORIGIN,
+]
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || origin.startsWith('http://localhost:')) {
+    if (!origin || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:') || allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
       callback(null, ORIGIN)
     }
   },
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
+  methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  credentials: true,
 }))
+app.options('*', cors())
 
-app.use(express.json({ limit: '10mb' }))
+app.use(express.json({ limit: '50mb' }))
+app.use(express.urlencoded({ extended: true, limit: '50mb' }))
+app.use('/proofs', express.static(path.join(__dirname, 'public', 'proofs')))
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Health check ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* ── Document Upload Multer Configuration ─────────────────────────────────── */
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100 MB max file size
+  },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase()
+    const allowedExts = ['.xlsx', '.xls', '.pdf', '.csv', '.docx']
+    const allowedMimes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'application/pdf',
+      'text/csv',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/octet-stream',
+    ]
+
+    if (allowedExts.includes(ext) || allowedMimes.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(new Error(`File type "${file.mimetype || ext}" is not allowed. Supported formats: ${allowedExts.join(', ')}`))
+    }
+  },
+})
+
+/* ── Health check ───────────────────────────────────────────────────────────── */
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', bucket: BUCKET, region: process.env.AWS_REGION })
 })
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ POST /api/presigned-url
-     Body:  { filename: string, contentType: string }
-     Returns: { uploadUrl: string, s3Key: string }
-ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* ── POST /api/upload
+     Multipart form data:  file: File
+     Uploads document to S3 bucket (uploads/<uuid>_<filename>)
+     Returns: { success: true, s3Key: string, filename: string, size: number, mimetype: string }
+─────────────────────────────────────────────────────────────────────────── */
+app.post('/api/upload', (req, res, next) => {
+  documentUpload.single('file')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      console.warn(`⚠️  [Upload] Multer error: ${err.code} - ${err.message}`)
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'File size exceeds maximum limit of 100MB.' })
+      }
+      return res.status(400).json({ error: `File upload error: ${err.message}` })
+    } else if (err) {
+      console.warn(`⚠️  [Upload] Validation error: ${err.message}`)
+      return res.status(400).json({ error: err.message })
+    }
+    next()
+  })
+}, async (req, res) => {
+  try {
+    if (!req.file) {
+      console.warn('⚠️  [Upload] No file attached in request')
+      return res.status(400).json({ error: 'No file uploaded. Please select a file.' })
+    }
+
+    const originalName = req.file.originalname || 'document.bin'
+    const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const s3Key = `uploads/${uuidv4()}_${safeName}`
+
+    // Infer content type if octet-stream or missing
+    let contentType = req.file.mimetype
+    if (!contentType || contentType === 'application/octet-stream') {
+      const ext = path.extname(originalName).toLowerCase()
+      const mimeMap = {
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.xls': 'application/vnd.ms-excel',
+        '.pdf': 'application/pdf',
+        '.csv': 'text/csv',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }
+      contentType = mimeMap[ext] || 'application/octet-stream'
+    }
+
+    console.log(`📤 [Upload] Uploading "${originalName}" (${req.file.size} bytes, ${contentType}) to S3: ${s3Key}`)
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: s3Key,
+      Body: req.file.buffer,
+      ContentType: contentType,
+    })
+
+    await s3.send(command)
+    cacheUploadedBuffer(s3Key, req.file.buffer)
+
+    console.log(`✅ [Upload] Successfully saved to S3 bucket "${BUCKET}": ${s3Key}`)
+    return res.status(200).json({
+      success: true,
+      message: 'File successfully uploaded and stored in S3.',
+      s3Key,
+      filename: originalName,
+      size: req.file.size,
+      mimetype: contentType,
+    })
+  } catch (err) {
+    console.error('❌ [Upload] Failed to upload document to S3:', err)
+    return res.status(500).json({
+      error: `Failed to upload document to S3: ${err.message || 'Unknown server error'}`,
+    })
+  }
+})
+
 app.post('/api/presigned-url', async (req, res) => {
   try {
     const { filename, contentType } = req.body
@@ -148,19 +322,19 @@ app.post('/api/presigned-url', async (req, res) => {
     }
 
     // Build a unique S3 key:  uploads/<uuid>_<original-filename>
-    const ext    = filename.includes('.') ? filename.split('.').pop() : 'bin'
-    const s3Key  = `uploads/${uuidv4()}_${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+    const ext = filename.includes('.') ? filename.split('.').pop() : 'bin'
+    const s3Key = `uploads/${uuidv4()}_${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`
 
     const command = new PutObjectCommand({
-      Bucket:      BUCKET,
-      Key:         s3Key,
+      Bucket: BUCKET,
+      Key: s3Key,
       ContentType: contentType,
     })
 
     // Presigned URL valid for 10 minutes
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 600 })
 
-    console.log(`ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦  Presigned URL issued for: ${s3Key}`)
+    console.log(`Ã¢Å“â€¦  Presigned URL issued for: ${s3Key}`)
     return res.json({ uploadUrl, s3Key })
 
   } catch (err) {
@@ -179,7 +353,7 @@ app.delete('/api/file', async (req, res) => {
     if (!s3Key) return res.status(400).json({ error: 's3Key is required' })
 
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: s3Key }))
-    console.log(`ðŸ—‘ï¸   Deleted from S3: ${s3Key}`)
+    console.log(`🗑️   Deleted from S3: ${s3Key}`)
     return res.json({ success: true })
   } catch (err) {
     console.error('Error deleting file:', err)
@@ -187,10 +361,19 @@ app.delete('/api/file', async (req, res) => {
   }
 })
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ In-memory result cache ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
-let cachedResult = null
+/* Ã¢â€â‚¬Ã¢â€â‚¬ In-memory result cache Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
+const ANALYSIS_CACHE_FILE = path.join(__dirname, 'config/analysis_results_cache.json');
+let cachedResult = null;
+try {
+  if (fs.existsSync(ANALYSIS_CACHE_FILE)) {
+    cachedResult = JSON.parse(fs.readFileSync(ANALYSIS_CACHE_FILE, 'utf8'));
+    console.log(`✅ Loaded cached analysis result from disk: ${cachedResult.services?.length || 0} services, ${cachedResult.totalLicences || 0} licences`);
+  }
+} catch (e) {
+  console.warn('Could not load analysis_results_cache.json:', e.message);
+}
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Helper: stream S3 object to Buffer ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Helper: stream S3 object to Buffer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 async function s3ToBuffer(s3Key) {
   const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: s3Key })
   const resp = await s3.send(cmd)
@@ -199,7 +382,7 @@ async function s3ToBuffer(s3Key) {
   return Buffer.concat(chunks)
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Helper: pick newest XLSX from uploads/ ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+/* Ã¢â€â‚¬Ã¢â€â‚¬ Helper: pick newest XLSX from uploads/ Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
 async function findLatestXlsx() {
   const list = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET, Prefix: 'uploads/' }))
   const files = (list.Contents || []).filter(o => o.Key.endsWith('.xlsx') || o.Key.endsWith('.csv'))
@@ -208,14 +391,14 @@ async function findLatestXlsx() {
   return files[0].Key
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ Licence engine ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ Ã¢â€šÂ¬ */
+/* Ã¢â€ â‚¬Ã¢â€ â‚¬ Licence engine Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬Ã¢â€ â‚¬ */
 //  Input rows: [{ SERVICE, USER_LOGIN, PRIVILEGE_NAME, ROLE_NAME, ROLE_CODE }]
 //  Input costConfig: Parsed JSON array/object containing costed privileges per service
 //  Rules:
 //   - Only privileges listed in the JSON config consume a licence.
 //   - One employee with N costed privileges from the SAME service = 1 licence.
-//   - Output: hierarchy SERVICE â†’ PRIVILEGE_NAME â†’ ROLE_NAME â†’ employees[]
-function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap = new Map(), activeStatusMap = new Map(), subscribedNameToSku = new Map()) {
+//   - Output: hierarchy SERVICE → PRIVILEGE_NAME → ROLE_NAME → employees[]
+function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap = new Map(), activeStatusMap = new Map()) {
   // Build a fast lookup for costed privileges from the JSON config
   // Assumes JSON structure: [{ service_name: "...", privileges: ["Priv A", "Priv B"] }]
   // Create a reverse mapping from Privilege -> Array<Service Name>
@@ -229,7 +412,7 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
           let pName = '';
           if (typeof p === 'string') pName = p.trim();
           else if (typeof p === 'object' && p.privilege) pName = p.privilege.trim();
-          
+
           if (pName) {
             if (!privToServices.has(pName)) privToServices.set(pName, new Set());
             privToServices.get(pName).add(sName);
@@ -254,6 +437,8 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
   const validRows = []
   for (const row of rows) {
     const priv = (row.PRIVILEGE || row.PRIVILEGE_NAME || '').trim()
+
+    // Check if we have this privilege in our costed config
     if (priv && privToServices.has(priv)) {
       const services = Array.from(privToServices.get(priv))
       for (const svc of services) {
@@ -262,25 +447,14 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
     }
   }
 
-  // Build roleName -> Set<ALL privilege codes> from the complete raw data
-  // This captures every privilege each role has, not just the costed ones.
-  const roleAllPrivilegesMap = new Map()
-  for (const row of rows) {
-    const roleName = (row.ROLE_NAME || '').trim()
-    const privCode = (row.PRIVILEGE || row.PRIVILEGE_NAME || '').trim()
-    if (!roleName || !privCode) continue
-    if (!roleAllPrivilegesMap.has(roleName)) roleAllPrivilegesMap.set(roleName, new Set())
-    roleAllPrivilegesMap.get(roleName).add(privCode)
-  }
-
   // Step 1: Build nested maps  SERVICE -> PRIVILEGE_NAME -> ROLE_NAME -> Set<USER_LOGIN>
   const svcMap = new Map()
 
   for (const row of validRows) {
-    const svc   = (row.SERVICE       || '').trim()
-    const user  = (row.USER_LOGIN    || '').trim()
-    const priv  = (row.PRIVILEGE     || row.PRIVILEGE_NAME || '').trim()
-    const role  = (row.ROLE_NAME     || '').trim()
+    const svc = (row.SERVICE || '').trim()
+    const user = (row.USER_LOGIN || '').trim()
+    const priv = (row.PRIVILEGE || row.PRIVILEGE_NAME || '').trim()
+    const role = (row.ROLE_NAME || '').trim()
     if (!svc || !user || !priv) continue
 
     if (!svcMap.has(svc)) svcMap.set(svc, new Map())
@@ -323,10 +497,16 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
     }
   }
 
+  // Fast SKU mapping: only inspect unique service names in dataset
+  const uniqueSvcSkuPairs = new Map()
   for (const row of rows) {
-    const svcRaw  = (row.SERVICE || row['Service Name'] || '').trim()
+    const svcRaw = (row.SERVICE || row['Service Name'] || '').trim()
     const sku = (row.SKU || '').trim()
-    if (!svcRaw || !sku) continue
+    if (svcRaw && sku && !uniqueSvcSkuPairs.has(svcRaw)) {
+      uniqueSvcSkuPairs.set(svcRaw, sku)
+    }
+  }
+  for (const [svcRaw, sku] of uniqueSvcSkuPairs) {
     for (const knownSvc of knownServices) {
       if (svcRaw === knownSvc || svcRaw.includes(knownSvc) || knownSvc.includes(svcRaw)) {
         svcToSku.set(knownSvc, sku)
@@ -354,90 +534,66 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
             status = activeStatusMap.get(key) ? 'active' : 'inactive';
           }
           return {
-            id:         login,
-            name:       login,
-            email:      `${login.toLowerCase()}@corp.com`,
+            id: login,
+            name: login,
+            email: `${login.toLowerCase()}@corp.com`,
             department: '',
             status,
-            avatar:     login.slice(0, 2).toUpperCase(),
+            avatar: login.slice(0, 2).toUpperCase(),
           };
         })
         roles.push({
-          id:            `${svcName}|${privName}|${roleName}`,
-          name:          roleName || '(No Role)',
+          id: `${svcName}|${privName}|${roleName}`,
+          name: roleName || '(No Role)',
           employeeCount: employees.length,
-          licenseUsed:   employees.length,
-          licenseTotal:  employees.length,
+          licenseUsed: employees.length,
+          licenseTotal: employees.length,
           employees,
-          // All privilege codes this role has in the Excel data (real data, not simulated)
-          allPrivileges: [...(roleAllPrivilegesMap.get(roleName) || new Set())],
         })
       }
 
-      const totalUsersForPriv = new Set(roles.flatMap(r => r.employees.map(e => e.id))).size
+      const privUserSet = new Set()
+      for (const r of roles) {
+        for (const emp of r.employees) privUserSet.add(emp.id)
+      }
+      const totalUsersForPriv = privUserSet.size
       privileges.push({
-        id:          `${svcName}|${privName}`,
-        name:        privName,
+        id: `${svcName}|${privName}`,
+        name: privName,
         description: `${privName} - ${totalUsersForPriv} user${totalUsersForPriv !== 1 ? 's' : ''}`,
         costPerUser: 0,
-        totalCost:   0,
-        usageCount:  totalUsersForPriv,
-        usageLimit:  0,
-        risk:        'medium',
+        totalCost: 0,
+        usageCount: totalUsersForPriv,
+        usageLimit: 0,
+        risk: 'medium',
         roles,
       })
     }
 
     const licenseCount = (svcUserMap.get(svcName) || new Set()).size
     const sku = svcToSku.get(svcName) || ''
-    
+
     let unitCost = 0;
     let finalSku = sku;
     let minQty = 1;
     let metric = '';
 
-    // Step A: If File 2 was provided, try to resolve the correct subscribed SKU
-    // by fuzzy-matching this service name against the service names extracted from File 2.
-    // This is needed because the cost sheet PDF may have wrong service names for some SKUs.
-    if (subscribedNameToSku.size > 0) {
-      const sNameLower = svcName.toLowerCase();
-      for (const [subSvcName, subSku] of subscribedNameToSku) {
-        const subLower = subSvcName.toLowerCase();
-        if (sNameLower === subLower || sNameLower.includes(subLower) || subLower.includes(sNameLower)) {
-          finalSku = subSku;
-          break;
-        }
-      }
-    }
-
-    // Step B: Look up cost data â€” prefer the entry whose partNumber matches finalSku,
-    // then fall back to service-name matching.
     if (Array.isArray(costData)) {
-      let bestMatch = null;
-      const sNameLower = svcName.toLowerCase();
       for (const cd of costData) {
+        // More forgiving name matching logic
+        const sNameLower = svcName.toLowerCase();
         const cdNameLower = (cd.serviceName || '').toLowerCase();
-        const nameMatch = cdNameLower && (
-          sNameLower === cdNameLower ||
-          sNameLower.includes(cdNameLower) ||
-          cdNameLower.includes(sNameLower)
-        );
-        const skuMatch = cd.partNumber && finalSku && cd.partNumber === finalSku;
 
-        if (skuMatch) {
-          // Exact SKU match â€” best possible, use immediately
-          bestMatch = cd;
+        if (
+          (cdNameLower && (sNameLower === cdNameLower || sNameLower.includes(cdNameLower) || cdNameLower.includes(sNameLower))) ||
+          (cd.partNumber && sku && cd.partNumber === sku)
+        ) {
+          unitCost = parseFloat(cd.cost) || 0;
+          if (cd.partNumber) finalSku = cd.partNumber;
+          if (cd.minimumQuantity) minQty = parseInt(cd.minimumQuantity, 10) || 1;
+          if (cd.metric) metric = cd.metric;
           break;
         }
-        if (nameMatch && !bestMatch) {
-          bestMatch = cd; // Keep first name match as fallback
-        }
-      }
-      if (bestMatch) {
-        unitCost = parseFloat(bestMatch.cost) || 0;
-        if (!finalSku && bestMatch.partNumber) finalSku = bestMatch.partNumber;
-        if (bestMatch.minimumQuantity) minQty = parseInt(bestMatch.minimumQuantity, 10) || 1;
-        if (bestMatch.metric) metric = bestMatch.metric;
       }
     }
 
@@ -459,20 +615,20 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
 
     const subscribedQuantity = subscribedQuantityMap.has(finalSku) ? subscribedQuantityMap.get(finalSku) : undefined;
     const overProvisioned = subscribedQuantity !== undefined ? Math.max(0, billableQuantity - subscribedQuantity) : 0;
-    
+
     // Calculate the actual cost of the over-provisioned units
     const overageBillingUnits = overProvisioned > 0 ? Math.ceil(overProvisioned / minQty) : 0;
     const overageCost = overageBillingUnits * unitCost;
 
     services.push({
-      id:              svcName.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
-      name:            svcName,
-      sku:             finalSku,
-      vendor:          '',
-      icon:            'ðŸ¢',
-      color:           palette.color,
-      bgGradient:      palette.bg,
-      totalCost:       totalCost,
+      id: svcName.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
+      name: svcName,
+      sku: finalSku,
+      vendor: '',
+      icon: '🏢',
+      color: palette.color,
+      bgGradient: palette.bg,
+      totalCost: totalCost,
       licenseCount,
       billableQuantity,
       billingUnits,
@@ -480,7 +636,7 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
       metric,
       unitCost,
       overageCost,
-      privilegeCount:  privileges.length,
+      privilegeCount: privileges.length,
       overProvisioned: overProvisioned,
       subscribedQuantity,
       privileges,
@@ -490,57 +646,50 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedQuantityMap =
   services.sort((a, b) => b.licenseCount - a.licenseCount)
 
   return {
-    processedAt:   new Date().toISOString(),
+    processedAt: new Date().toISOString(),
     totalLicences: services.reduce((a, s) => a + s.licenseCount, 0),
     services,
   }
 }
 
-/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ POST /api/process
-/* Ã¢Å½Â¯Ã¢Å½Â¯ POST /api/process
+/* Ã¢â€â‚¬Ã¢â€â‚¬ POST /api/process
+/* âŽ¯âŽ¯ POST /api/process
      Body: { s3Key: string }
      Downloads XLSX from S3, runs licence engine, caches result.
-Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯ */
+âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯ */
 app.post('/api/process', async (req, res) => {
+  const startTime = Date.now();
   try {
     const s3Key = req.body.xlsxS3Key || req.body.s3Key;
     const summaryS3Key = req.body.summaryS3Key;
     const statusS3Key = req.body.statusS3Key;
 
-    let costSheetData = [];
-    try {
-      const buf = await s3ToBuffer('config/global_cost_sheet_data.json');
-      costSheetData = JSON.parse(buf.toString('utf-8'));
-      console.log(`âœ… Loaded global cost sheet data: ${costSheetData.length} prices`);
-    } catch (e) {
-      console.log('âš ï¸ No global cost sheet data found. Proceeding without costs.');
-    }
-    
-    let privilegesConfig = [];
-    try {
-      console.log(`âš™ï¸    Fetching config from S3: ${CONFIG_S3_KEY}`);
-      const buf = await s3ToBuffer(CONFIG_S3_KEY);
-      const configData = buf.toString('utf-8');
-      const parsedConfig = JSON.parse(configData);
-      if (parsedConfig.services) {
-        privilegesConfig = parsedConfig.services;
-      } else {
-        privilegesConfig = parsedConfig;
-      }
-    } catch (err) {
-      console.warn(`âš ï¸    Config not found in S3 or error reading it:`, err.message);
+    if (!s3Key) {
+      return res.status(400).json({ error: 'xlsxS3Key is required for analysis' });
     }
 
+    console.log(`🚀 [Analysis Engine] Starting analysis for main sheet: ${s3Key}`);
+
+    // ⚡ 1. Parallel Fetch: Fetch all buffers and configs concurrently in ONE parallel round-trip
+    const [costSheetData, privilegesConfig, summaryBuf, statusBuf, mainBuf] = await Promise.all([
+      getCostSheetData(),
+      getPrivilegesConfig(),
+      summaryS3Key ? getBuffer(summaryS3Key).catch(e => { console.warn('Could not load summary sheet:', e.message); return null; }) : Promise.resolve(null),
+      statusS3Key ? getBuffer(statusS3Key).catch(e => { console.warn('Could not load status sheet:', e.message); return null; }) : Promise.resolve(null),
+      getBuffer(s3Key),
+    ]);
+
+    const fetchDuration = Date.now() - startTime;
+    console.log(`⏱️ [Analysis Engine] Document retrieval completed in ${fetchDuration}ms`);
+
+    // ⚡ 2. Fast Processing: Summary Sheet
     const subscribedQuantityMap = new Map();
-    const subscribedNameToSku = new Map(); // serviceName (from File 2) -> SKU
-    if (summaryS3Key) {
+    if (summaryBuf) {
       try {
-        console.log(`âš™ï¸    Processing Summary Sheet: ${summaryS3Key}`);
-        const summaryBuf = await s3ToBuffer(summaryS3Key);
-        const summaryWb = XLSX.read(summaryBuf, { type: 'buffer' });
+        const summaryWb = XLSX.read(summaryBuf, { type: 'buffer', dense: true, cellFormula: false, cellHTML: false, cellStyles: false, cellDates: false });
         const summarySheetName = summaryWb.SheetNames.includes('Sheet1') ? 'Sheet1' : summaryWb.SheetNames[0];
         const summaryRows = XLSX.utils.sheet_to_json(summaryWb.Sheets[summarySheetName], { header: 1 });
-        
+
         for (const row of summaryRows) {
           if (Array.isArray(row) && row.length >= 7) {
             let partNumber = typeof row[1] === 'string' ? row[1] : '';
@@ -549,35 +698,24 @@ app.post('/api/process', async (req, res) => {
               const subscribedQty = parseInt(row[6], 10);
               if (!isNaN(subscribedQty)) {
                 subscribedQuantityMap.set(partNumber, subscribedQty);
-                // Also capture the service name from column 2 for fuzzy SKU resolution
-                const rawSvcName = typeof row[2] === 'string' ? row[2] : '';
-                const normalizedSvcName = rawSvcName
-                  .replace(/\r\n|\r|\n/g, ' ')
-                  .replace(/\s*-\s*Hosted Named User\s*$/i, '')
-                  .replace(/\s*-\s*Hosted Employee\s*$/i, '')
-                  .replace(/\s*-\s*Hosted.*$/i, '')
-                  .trim();
-                if (normalizedSvcName) {
-                  subscribedNameToSku.set(normalizedSvcName, partNumber);
-                }
               }
             }
           }
         }
-        console.log(`âœ… Extracted ${subscribedQuantityMap.size} subscribed quantities and ${subscribedNameToSku.size} service-nameâ†’SKU mappings from Summary Sheet`);
+        console.log(`✅ Extracted ${subscribedQuantityMap.size} subscribed quantities from Summary Sheet`);
       } catch (err) {
-        console.warn(`âš ï¸ Error processing Summary Sheet:`, err.message);
+        console.warn(`⚠️ Error processing Summary Sheet:`, err.message);
       }
     }
+
+    // ⚡ 3. Fast Processing: User Active Status Sheet
     const activeStatusMap = new Map();
-    if (statusS3Key) {
+    if (statusBuf) {
       try {
-        console.log(`âš™ï¸    Processing Active Status: ${statusS3Key}`)
-        const statusBuf = await s3ToBuffer(statusS3Key)
-        const statusWb = XLSX.read(statusBuf, { type: 'buffer' })
-        const statusSheetName = statusWb.SheetNames.includes('Sheet1') ? 'Sheet1' : statusWb.SheetNames[0]
-        const statusRows = XLSX.utils.sheet_to_json(statusWb.Sheets[statusSheetName], { defval: '' })
-        
+        const statusWb = XLSX.read(statusBuf, { type: 'buffer', dense: true, cellFormula: false, cellHTML: false, cellStyles: false, cellDates: false });
+        const statusSheetName = statusWb.SheetNames.includes('Sheet1') ? 'Sheet1' : statusWb.SheetNames[0];
+        const statusRows = XLSX.utils.sheet_to_json(statusWb.Sheets[statusSheetName], { defval: '' });
+
         for (const row of statusRows) {
           if (row['User Name']) {
             const normalizedRole = (row['Role Name'] || '').trim().toLowerCase().replace(/_/g, ' ');
@@ -586,89 +724,99 @@ app.post('/api/process', async (req, res) => {
             activeStatusMap.set(key, isActive);
           }
         }
-        console.log(`âœ… Extracted ${activeStatusMap.size} statuses from User Status Sheet`)
-      } catch(err) {
-        console.warn(`âš ï¸ Error processing User Status Sheet:`, err.message);
+        console.log(`✅ Extracted ${activeStatusMap.size} statuses from User Status Sheet`);
+      } catch (err) {
+        console.warn(`⚠️ Error processing User Status Sheet:`, err.message);
       }
     }
 
-    console.log(`âš™ï¸    Processing: ${s3Key}`)
-    const buf = await s3ToBuffer(s3Key)
-    const wb  = XLSX.read(buf, { type: 'buffer' })
+    // ⚡ 4. Fast Processing: Users & Roles Document
+    console.log(`⚙️  Parsing Users & Roles workbook (dense mode)...`);
+    const wb = XLSX.read(mainBuf, { type: 'buffer', dense: true, cellFormula: false, cellHTML: false, cellStyles: false, cellDates: false });
+    const sheetName = wb.SheetNames.includes('Sheet1') ? 'Sheet1' : wb.SheetNames[0];
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+    console.log(`   Parsed ${rows.length} rows from sheet "${sheetName}"`);
 
-    const sheetName = wb.SheetNames.includes('Sheet1') ? 'Sheet1' : wb.SheetNames[0]
-    
-    // Some files have a title row at row 0 and the real column headers at row 1.
-    // Detect this by checking if the first row produces __EMPTY columns (i.e. the first
-    // cell is a non-standard title, not a recognised column header).
-    let rows
-    const rawCheck = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1 })
-    const firstRowKeys = rawCheck[0] ? rawCheck[0].map(String) : []
-    const EXPECTED_COLS = ['SERVICE', 'USER_LOGIN', 'PRIVILEGE', 'PRIVILEGE_NAME', 'ROLE_NAME']
-    const hasExpectedHeaders = EXPECTED_COLS.some(col => firstRowKeys.includes(col))
-    if (!hasExpectedHeaders && rawCheck.length > 1) {
-      // Row 0 is a title â€” use row 1 as headers
-      console.log(`   Detected title row. Using row 1 as column headers.`)
-      const headers = rawCheck[1]
-      rows = []
-      for (let i = 2; i < rawCheck.length; i++) {
-        const row = {}
-        headers.forEach((h, j) => { row[h] = rawCheck[i][j] !== undefined ? rawCheck[i][j] : '' })
-        rows.push(row)
-      }
-    } else {
-      rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' })
-    }
+    // ⚡ 5. Build Hierarchy
+    cachedResult = buildHierarchy(rows, privilegesConfig, costSheetData, subscribedQuantityMap, activeStatusMap);
+    const totalDuration = Date.now() - startTime;
+    console.log(`✅  [Analysis Engine] Completed in ${totalDuration}ms: ${cachedResult.services.length} services, ${cachedResult.totalLicences} licences`);
 
-    console.log(`   Parsed ${rows.length} rows from sheet "${sheetName}"`)
-    cachedResult = buildHierarchy(rows, privilegesConfig, costSheetData, subscribedQuantityMap, activeStatusMap, subscribedNameToSku)
-    console.log(`âœ…  Result built: ${cachedResult.services.length} services, ${cachedResult.totalLicences} licences`)
+    // Non-blocking background disk cache write
+    fs.writeFile(ANALYSIS_CACHE_FILE, JSON.stringify(cachedResult), (err) => {
+      if (err) console.warn('Could not persist analysis_results_cache.json in background:', err.message);
+    });
 
-    return res.json({ ok: true, services: cachedResult.services.length, totalLicences: cachedResult.totalLicences })
+    return res.json({ ok: true, services: cachedResult.services.length, totalLicences: cachedResult.totalLicences, durationMs: totalDuration })
   } catch (err) {
     console.error('Error processing file:', err)
     return res.status(500).json({ error: err.message })
   }
 })
 
-/* Ã¢Å½Â¯Ã¢Å½Â¯ GET /api/analysis-results Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯Ã¢Å½Â¯ */
+/* âŽ¯âŽ¯ GET /api/analysis-results âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯âŽ¯ */
 app.get('/api/analysis-results', async (_req, res) => {
   if (cachedResult) return res.json(cachedResult)
   return res.status(404).json({ error: 'No analysis available. Please upload your XLSX usage report and click Analyse.' })
 })
 
-/* â”€â”€ POST /api/ai-insight â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── POST /api/ai-insight ────────────────────────────────────────────────────────── */
 app.post('/api/ai-insight', async (req, res) => {
   try {
-    const { privilegeName, model } = req.body;
+    const { privilegeName, serviceName, model } = req.body;
     if (!privilegeName) return res.status(400).json({ error: 'privilegeName is required' });
 
     const apiKey = process.env.DEEPSEEK_API_KEY;
-    const selectedModel = model || 'deepseek-chat';
+    // Normalize model name: frontend may send 'deepseek' but API needs 'deepseek-chat'
+    const selectedModel = (!model || model === 'deepseek') ? 'deepseek-chat' : model;
 
-    const systemPrompt = `You are an Oracle HCM Licensing Expert. 
-The user is asking about the privilege: "${privilegeName}".
-This is a costed privilege that incurs a licensing fee.
-Provide a strictly formatted JSON response with exactly these keys:
-- "explanation": A 3 to 4 sentence explanation of what this privilege is and what functionality it provides (MUST BE A STRING).
-- "isCostedMessage": A short confirmation that this privilege incurs a cost (max 2 sentences, MUST BE A STRING).
-- "alternative": A suggested free or lower-cost alternative privilege or functional workaround (MUST BE A STRING).
-- "impact": The functional impact on the user if this privilege is removed and the alternative is used (MUST BE A STRING).
-Output ONLY valid JSON where EVERY value is a simple string without any markdown formatting or nested objects.`;
+    const systemPrompt = `You are an Oracle Fusion Cloud Licensing Expert.
+The user is inquiring about the privilege: "${privilegeName}"${serviceName ? ` under the service "${serviceName}"` : ''}.
+
+Provide the response in two distinct methods inside a strictly formatted JSON object with these exact keys:
+
+[For Method 1 - Detailed 2-3 Line Narrative]:
+- "explanation": A concise 2 to 3 sentence explanation of what this privilege is and what core business functionality it provides (MUST BE A STRING).
+- "alternative": A concise 1 to 2 sentence recommendation of a free or lower-cost alternative privilege or duty role (MUST BE A STRING).
+
+[For Method 2 - Structured Direct Mapping]:
+- "costedPrivilege": "${privilegeName}" (The current privilege being analyzed, MUST BE A STRING).
+- "costedPrivilegeCosted": "Yes" (The current privilege requires a paid license).
+- "alternatePrivilege": The exact name or duty role code of the suggested alternative privilege or duty role (e.g. "HWM_TIME_CARD_ENTRY_DUTY" or "None", MUST BE A STRING).
+- "alternatePrivilegeCosted": "No" (The suggested alternative is free or incurs no extra license fee).
+- "impact": The specific functional impact on the user if replaced. CRITICAL: If the impact is merely a generic or obvious statement (such as "The user will lose access to this feature" or "Users cannot perform this task"), return an empty string "" instead. Only output text if there is a concrete, valuable functional distinction or edge case to highlight.
+
+Output ONLY valid JSON where EVERY value is a simple string without any markdown code fences.`;
 
     const aiResp = await generateAIContent(selectedModel, systemPrompt, null, 0.2, true);
     const parsed = JSON.parse(aiResp.content);
-    
+
+    // Normalize fields for clarity
+    parsed.costedPrivilege = parsed.costedPrivilege || parsed.privilegeName || privilegeName;
+    parsed.costedPrivilegeCosted = 'Yes';
+    parsed.alternatePrivilege = parsed.alternatePrivilege || parsed.alternativeName || 'None';
+    parsed.alternatePrivilegeCosted = parsed.alternatePrivilegeCosted || 'No';
+    parsed.costed = 'Yes';
+    parsed.isCostedMessage = 'Costed: Yes (Paid License)';
+
+    if (parsed.impact && (
+      parsed.impact.toLowerCase().includes('will lose access to this feature') ||
+      parsed.impact.toLowerCase().includes('cannot perform this task') ||
+      parsed.impact.trim().length < 15
+    )) {
+      parsed.impact = '';
+    }
+
     // Include token usage
     parsed.usage = aiResp.usage;
-    
+
     return res.json(parsed);
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 })
 
-/* â”€â”€ CONFIGURATION ENDPOINTS (Oracle Privileges) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── CONFIGURATION ENDPOINTS (Oracle Privileges) ────────────────────────────── */
 
 const extractionJobs = new Map();
 
@@ -685,12 +833,12 @@ app.post('/api/settings/privileges/extract', upload.single('file'), async (req, 
     const apiKey = process.env.DEEPSEEK_API_KEY;
     const selectedModel = req.body.model || 'deepseek-chat';
 
-    console.log('ðŸ“„ Parsing PDF:', req.file.originalname, `(${req.file.size} bytes)`);
+    console.log('📄 Parsing PDF:', req.file.originalname, `(${req.file.size} bytes)`);
     const parser = new PDFParse({ data: req.file.buffer });
     const pdfData = await parser.getText();
     const textContent = pdfData.text;
     await parser.destroy();
-    console.log(`âœ… PDF Parsed. Extracted ${textContent.length} characters.`);
+    console.log(`✅ PDF Parsed. Extracted ${textContent.length} characters.`);
 
     // We will chunk the text into roughly 20,000 characters per chunk
     const maxChars = 20000;
@@ -728,19 +876,19 @@ Output ONLY valid JSON without any markdown formatting.`;
         for (let i = 0; i < chunks.length; i++) {
           job.currentChunk = i + 1;
           job.progress = `Extracting chunk ${i + 1} of ${chunks.length}...`;
-          console.log(`ðŸ¤– [Job ${jobId}] Processing chunk ${i + 1}/${chunks.length}...`);
-          
+          console.log(`🤖 [Job ${jobId}] Processing chunk ${i + 1}/${chunks.length}...`);
+
           const aiResp = await generateAIContent(selectedModel, systemPrompt, chunks[i], 0.1, true);
           let parsed = JSON.parse(aiResp.content);
-          
+
           if (parsed && !Array.isArray(parsed)) {
             const arrayKey = Object.keys(parsed).find(k => Array.isArray(parsed[k]));
             parsed = arrayKey ? parsed[arrayKey] : [parsed];
           }
-          
+
           job.services.push(...(parsed || []));
 
-          
+
           if (aiResp.usage) {
             job.usage.prompt_tokens += aiResp.usage.prompt_tokens || 0;
             job.usage.completion_tokens += aiResp.usage.completion_tokens || 0;
@@ -749,17 +897,17 @@ Output ONLY valid JSON without any markdown formatting.`;
 
           // Give a very small delay (1 second) to be polite, DeepSeek limits are much higher than Groq
           if (i < chunks.length - 1) {
-             job.progress = `Finished chunk ${i + 1}. Moving to chunk ${i + 2}...`;
-             await new Promise(r => setTimeout(r, 1000));
+            job.progress = `Finished chunk ${i + 1}. Moving to chunk ${i + 2}...`;
+            await new Promise(r => setTimeout(r, 1000));
           }
         }
-        
+
         // Finalize
         job.status = 'completed';
         job.progress = `Successfully extracted ${job.services.length} services!`;
-        console.log(`âœ… [Job ${jobId}] Completed. Total services: ${job.services.length}`);
+        console.log(`✅ [Job ${jobId}] Completed. Total services: ${job.services.length}`);
       } catch (err) {
-        console.error(`âŒ [Job ${jobId}] Failed:`, err);
+        console.error(`❌ [Job ${jobId}] Failed:`, err);
         job.status = 'error';
         job.error = err.message || String(err);
       }
@@ -781,7 +929,7 @@ app.get('/api/settings/privileges/extract/status/:jobId', (req, res) => {
   return res.json(job);
 });
 
-/* â”€â”€ BALANCE ENDPOINT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── BALANCE ENDPOINT ────────────────────────────────────────────────────────── */
 app.get('/api/settings/balance', async (req, res) => {
   try {
     const apiKey = process.env.DEEPSEEK_API_KEY;
@@ -792,7 +940,7 @@ app.get('/api/settings/balance', async (req, res) => {
       }
     });
     if (!response.ok) {
-       return res.status(500).json({ error: 'Failed to fetch balance' });
+      return res.status(500).json({ error: 'Failed to fetch balance' });
     }
     const data = await response.json();
     return res.json(data);
@@ -806,7 +954,7 @@ app.post('/api/settings/privileges', async (req, res) => {
   try {
     const configData = req.body;
     if (!configData || !Array.isArray(configData)) {
-       return res.status(400).json({ error: 'Invalid configuration data. Must be a JSON array.' });
+      return res.status(400).json({ error: 'Invalid configuration data. Must be a JSON array.' });
     }
 
     const command = new PutObjectCommand({
@@ -817,7 +965,8 @@ app.post('/api/settings/privileges', async (req, res) => {
     });
 
     await s3.send(command);
-    console.log(`âœ… Configuration saved to S3: ${CONFIG_S3_KEY}`);
+    cachedPrivilegesConfig = configData;
+    console.log(`✅ Configuration saved to S3: ${CONFIG_S3_KEY}`);
     return res.json({ success: true });
   } catch (err) {
     console.error('Error saving configuration:', err);
@@ -839,7 +988,8 @@ app.get('/api/settings/privileges', async (req, res) => {
 app.delete('/api/settings/privileges', async (req, res) => {
   try {
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: CONFIG_S3_KEY }));
-    console.log(`ðŸ—‘ï¸ Deleted configuration from S3: ${CONFIG_S3_KEY}`);
+    cachedPrivilegesConfig = null;
+    console.log(`🗑️ Deleted configuration from S3: ${CONFIG_S3_KEY}`);
     return res.json({ success: true });
   } catch (err) {
     console.error('Error deleting configuration:', err);
@@ -847,330 +997,7 @@ app.delete('/api/settings/privileges', async (req, res) => {
   }
 });
 
-/* â”€â”€ ORACLE ROLE INTEGRATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-
-// GET â€” Fetch role details and privileges from Oracle
-app.get('/api/oracle/role/:roleName', async (req, res) => {
-  try {
-    const { roleName } = req.params;
-
-    const savedCreds = await loadOracleCredentials();
-    const ORACLE_HOST     = (savedCreds?.host)     || process.env.ORACLE_HOST;
-    const ORACLE_USERNAME = (savedCreds?.username)  || process.env.ORACLE_USERNAME;
-    const ORACLE_PASSWORD = (savedCreds?.password)  || process.env.ORACLE_PASSWORD;
-
-    if (!ORACLE_HOST || !ORACLE_USERNAME || !ORACLE_PASSWORD) {
-      return res.status(503).json({ error: 'Oracle credentials not configured. Go to Settings.' });
-    }
-
-    const authHeader = 'Basic ' + Buffer.from(`${ORACLE_USERNAME}:${ORACLE_PASSWORD}`).toString('base64');
-    const H = { 'Authorization': authHeader, 'Accept': 'application/json' };
-
-    let privileges = null;
-    let roleFoundButNoPrivileges = false;
-
-    // â”€â”€ Attempt 1: HCM REST API â€” expand=rolePrivileges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Correct Oracle HCM expand key is 'rolePrivileges', not 'privileges'
-    try {
-      const url = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles?q=roleName="${encodeURIComponent(roleName)}"&expand=rolePrivileges&fields=roleName,roleCode,rolePrivileges`;
-      console.log(`ðŸ” [Oracle] Attempt 1 HCM+rolePrivileges`);
-      const r = await fetch(url, { headers: H });
-      if (r.ok) {
-        const d = await r.json();
-        const item = d.items?.[0];
-        if (item) {
-          roleFoundButNoPrivileges = true;
-          const privItems = item.rolePrivileges?.items || item.rolePrivileges || [];
-          if (Array.isArray(privItems) && privItems.length > 0) {
-            privileges = privItems.map(p => ({
-              privilegeCode: p.privilegeCode || p.code || p.name || '',
-              name:          p.privilegeName || p.displayName || p.privilegeCode || p.name || '',
-            })).filter(p => p.privilegeCode);
-            console.log(`   âœ… Got ${privileges.length} privileges from HCM rolePrivileges expand`);
-          }
-        }
-      } else { console.log(`   â†’ HTTP ${r.status}`); }
-    } catch (e) { console.warn(`   â†’ Error: ${e.message}`); }
-
-    // â”€â”€ Attempt 2: HCM REST â€” child resource /rolePrivileges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if (!privileges) {
-      try {
-        console.log(`ðŸ” [Oracle] Attempt 2 HCM child resource`);
-        const urlRole = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles?q=roleName="${encodeURIComponent(roleName)}"&fields=roleId,roleName`;
-        const rRole = await fetch(urlRole, { headers: H });
-        if (rRole.ok) {
-          const dRole = await rRole.json();
-          const roleId = dRole.items?.[0]?.roleId;
-          if (roleId) {
-            roleFoundButNoPrivileges = true;
-            const urlPriv = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles/${roleId}/child/rolePrivileges`;
-            const rPriv = await fetch(urlPriv, { headers: H });
-            if (rPriv.ok) {
-              const dPriv = await rPriv.json();
-              const items = dPriv.items || [];
-              if (items.length > 0) {
-                privileges = items.map(p => ({
-                  privilegeCode: p.privilegeCode || p.code || p.name || '',
-                  name:          p.privilegeName || p.displayName || p.privilegeCode || '',
-                })).filter(p => p.privilegeCode);
-                console.log(`   âœ… Got ${privileges.length} privileges from HCM child resource`);
-              }
-            } else { console.log(`   â†’ child/rolePrivileges HTTP ${rPriv.status}`); }
-          }
-        }
-      } catch (e) { console.warn(`   â†’ Error: ${e.message}`); }
-    }
-
-    // â”€â”€ Attempt 3: OIG / Identity Governance â€” two-step â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if (!privileges) {
-      try {
-        console.log(`ðŸ” [Oracle] Attempt 3 OIG REST`);
-        const urlOig = `${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles?q=roleName eq "${roleName}"`;
-        const rOig = await fetch(urlOig, { headers: H });
-        if (rOig.ok) {
-          const dOig = await rOig.json();
-          const roleId = dOig.items?.[0]?.id || dOig.Resources?.[0]?.id;
-          if (roleId) {
-            roleFoundButNoPrivileges = true;
-            for (const sub of ['entitlements', 'policies', 'members']) {
-              const rSub = await fetch(`${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles/${roleId}/${sub}`, { headers: H });
-              if (rSub.ok) {
-                const dSub = await rSub.json();
-                const items = dSub.items || dSub.Resources || [];
-                if (items.length > 0) {
-                  privileges = items.map(p => ({
-                    privilegeCode: p.privilegeCode || p.entitlementCode || p.code || p.name || '',
-                    name:          p.privilegeName || p.displayName || p.name || '',
-                  })).filter(p => p.privilegeCode);
-                  if (privileges.length > 0) {
-                    console.log(`   âœ… Got ${privileges.length} privileges from OIG ${sub}`);
-                    break;
-                  }
-                }
-              }
-            }
-          }
-        } else { console.log(`   â†’ OIG HTTP ${rOig.status}`); }
-      } catch (e) { console.warn(`   â†’ Error: ${e.message}`); }
-    }
-
-    // â”€â”€ Attempt 4: SCIM â€” confirms role exists, cannot return privileges â”€â”€â”€â”€â”€
-    if (!roleFoundButNoPrivileges) {
-      try {
-        console.log(`ðŸ” [Oracle] Attempt 4 SCIM existence check`);
-        for (const filter of [`displayName eq "${roleName}"`, `name eq "${roleName}"`]) {
-          const r = await fetch(`${ORACLE_HOST}/hcmRestApi/scim/Roles?filter=${encodeURIComponent(filter)}`, { headers: H });
-          if (r.ok) {
-            const d = await r.json();
-            if (d.Resources?.[0]) { roleFoundButNoPrivileges = true; break; }
-          }
-        }
-      } catch (e) { console.warn(`   â†’ Error: ${e.message}`); }
-    }
-
-    // â”€â”€ Final response â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    if (!roleFoundButNoPrivileges && !privileges) {
-      return res.status(404).json({
-        notInOracle: true,
-        error: `Role "${roleName}" was not found in any Oracle API (HCM, OIG, or SCIM).`,
-      });
-    }
-
-    if (!privileges || privileges.length === 0) {
-      console.warn(`âš ï¸  [Oracle] Role found but privilege API inaccessible for "${roleName}"`);
-      return res.status(200).json({
-        noPrivileges: true,
-        role: { roleName, privileges: [] },
-        message: `Role found in Oracle but privilege list could not be retrieved. Showing Excel data as fallback.`,
-      });
-    }
-
-    console.log(`âœ… [Oracle] Fetched ${privileges.length} real privileges for "${roleName}"`);
-    return res.json({ role: { roleName, privileges } });
-
-  } catch (err) {
-    console.error('âŒ [Oracle Fetch Role] Error:', err.message);
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-
-/* â”€â”€ ORACLE ROLE CLONE ENDPOINT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/*
-  POST /api/oracle/clone-role
-  Body: {
-    originalRoleName: string,
-    newRoleName: string,
-    privilegesToKeep: string[],
-    removedPrivileges: string[]
-  }
-  Requires env vars: ORACLE_HOST, ORACLE_USERNAME, ORACLE_PASSWORD
-*/
-app.post('/api/oracle/clone-role', async (req, res) => {
-  try {
-    const { originalRoleName, newRoleName, privilegesToKeep = [], removedPrivileges = [] } = req.body;
-
-    if (!originalRoleName || !newRoleName) {
-      return res.status(400).json({ error: 'originalRoleName and newRoleName are required' });
-    }
-
-    // Load Oracle credentials â€” first from S3 (Settings page), fallback to .env
-    const savedCreds = await loadOracleCredentials();
-    const ORACLE_HOST     = (savedCreds?.host)     || process.env.ORACLE_HOST;
-    const ORACLE_USERNAME = (savedCreds?.username)  || process.env.ORACLE_USERNAME;
-    const ORACLE_PASSWORD = (savedCreds?.password)  || process.env.ORACLE_PASSWORD;
-
-    // If Oracle credentials are not configured at all, return a clear error
-    if (!ORACLE_HOST || !ORACLE_USERNAME || !ORACLE_PASSWORD) {
-      console.warn('âš ï¸  Oracle credentials not configured.');
-      return res.status(503).json({
-        error: 'Oracle credentials not configured. Go to Settings â†’ Oracle Connection and save your credentials.',
-      });
-    }
-
-    const authHeader = 'Basic ' + Buffer.from(`${ORACLE_USERNAME}:${ORACLE_PASSWORD}`).toString('base64');
-
-    console.log(`ðŸ”„ [Oracle] Cloning role "${originalRoleName}" â†’ "${newRoleName}"`);
-    console.log(`   Removed privileges: ${removedPrivileges.join(', ') || 'none'}`);
-
-    // Step 1: Fetch the original role's full details from Oracle
-    let originalRole = null;
-    let fetchUrl = `${ORACLE_HOST}/hcmRestApi/resources/11.13.18.05/roles?q=roleName="${encodeURIComponent(originalRoleName)}"&expand=privileges`;
-    let fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } });
-    
-    if (fetchRes.status === 404) {
-      // Try OIG path
-      fetchUrl = `${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles?q=roleName eq "${encodeURIComponent(originalRoleName)}"&expand=privileges`;
-      fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } });
-    }
-
-    let isDemoMock = false;
-
-    // SCIM Fallback for restricted demo environments
-    if (fetchRes.status === 404) {
-      fetchUrl = `${ORACLE_HOST}/hcmRestApi/scim/Roles?filter=name eq "${encodeURIComponent(originalRoleName)}"`;
-      fetchRes = await fetch(fetchUrl, { headers: { 'Authorization': authHeader, 'Accept': 'application/json' } });
-      
-      if (fetchRes.ok) {
-        const scimData = await fetchRes.json();
-        const scimRole = scimData.Resources?.[0];
-        if (scimRole) {
-          isDemoMock = true; // SCIM found the role, but we can't fetch real privileges or create via SCIM
-          originalRole = {
-            roleName: scimRole.name,
-            privileges: [] // Simulated
-          };
-          console.log(`âœ… [Oracle] Fetched original role via SCIM (Demo Mode): ${originalRole.roleName}`);
-        }
-      }
-    }
-
-    if (!isDemoMock) {
-      if (fetchRes.status === 401 || fetchRes.status === 403) {
-        return res.status(401).json({
-          error: 'Role not found. Please check that you have given the correct credentials.',
-          detail: `Oracle returned HTTP ${fetchRes.status} â€” username or password may be wrong.`
-        });
-      }
-
-      if (fetchRes.ok) {
-        const fetchData = await fetchRes.json();
-        const items = fetchData.items || (Array.isArray(fetchData) ? fetchData : [fetchData]);
-        originalRole = items.find(r => r.roleName === originalRoleName) || items[0] || null;
-      }
-    }
-
-    if (!originalRole || !originalRole.roleName) {
-      console.warn(`âš ï¸  [Oracle] Role "${originalRoleName}" not found in Oracle`);
-      return res.status(404).json({
-        error: `Role not found. Please check that you have given the correct credentials and that the role "${originalRoleName}" exists in your Oracle instance.`
-      });
-    }
-
-    // Step 2: Build the privilege list â€” original privileges minus removed ones
-    const removedSet = new Set(removedPrivileges.map(p => p.toLowerCase()));
-    let finalPrivileges = [];
-    if (!isDemoMock && Array.isArray(originalRole.privileges)) {
-      finalPrivileges = originalRole.privileges
-        .filter(p => !removedSet.has((p.privilegeCode || p.name || '').toLowerCase()))
-        .map(p => ({ privilegeCode: p.privilegeCode || p.name }));
-    } else {
-      // If it's a demo mock or missing privileges, just trust the client's 'privilegesToKeep'
-      finalPrivileges = privilegesToKeep.map(code => ({ privilegeCode: code }));
-    }
-
-    // Step 3: POST the new custom role to Oracle
-    const createPayload = {
-      roleName:        newRoleName,
-      roleDisplayName: newRoleName.replace(/_/g, ' ').replace(/^CUSTOM /, 'Custom '),
-      description:     `Cloned from ${originalRoleName}. Removed costed privileges: ${removedPrivileges.join(', ') || 'none'}.`,
-      roleCategory:    originalRole.roleCategory || 'HCM-Job Roles',
-      privileges:      finalPrivileges,
-    };
-
-    console.log(`ðŸ“¤ [Oracle] Creating role "${newRoleName}" with ${finalPrivileges.length} privileges...`);
-
-    let created = null;
-
-    if (isDemoMock) {
-      // In restricted demo environments (OIG missing, SCIM POST forbidden), 
-      // simulate a successful creation for the demo experience.
-      console.log(`âš ï¸ [Oracle] Simulating role creation for restricted demo environment...`);
-      created = { roleId: 'DEMO_' + Date.now(), roleName: newRoleName };
-    } else {
-      const createRes = await fetch(
-        `${ORACLE_HOST}/iam/governance/selfservice/api/v1/roles`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': authHeader,
-            'Content-Type':  'application/json',
-            'Accept':        'application/json',
-          },
-          body: JSON.stringify(createPayload),
-        }
-      );
-
-      if (createRes.status === 401 || createRes.status === 403) {
-        return res.status(401).json({
-          error: 'Role not found. Please check that you have given the correct credentials.',
-          detail: `Oracle denied role creation â€” HTTP ${createRes.status}. Your account may lack permission to create roles in the Security Console.`
-        });
-      }
-
-      if (createRes.status === 409) {
-        return res.status(409).json({
-          error: `A role named "${newRoleName}" already exists in Oracle. Please choose a different name.`
-        });
-      }
-
-      if (!createRes.ok) {
-        const errText = await createRes.text();
-        console.error(`âŒ [Oracle] Role creation failed (${createRes.status}): ${errText}`);
-        return res.status(createRes.status).json({
-          error: `Oracle API returned ${createRes.status}. Please check that you have given the correct credentials and try again.`
-        });
-      }
-
-      created = await createRes.json();
-    }
-
-    console.log(`âœ… [Oracle] Role "${newRoleName}" created. ID: ${created.roleId || created.id}`);
-
-    return res.json({
-      success:  true,
-      roleId:   created.roleId || created.id,
-      roleName: created.roleName || newRoleName,
-      message:  `Role "${newRoleName}" created in Oracle with ${finalPrivileges.length} privileges (${removedPrivileges.length} costed privileges removed)` + (isDemoMock ? ' (Demo Simulated)' : ''),
-    });
-
-  } catch (err) {
-    console.error('âŒ Error in /api/oracle/clone-role:', err.message);
-    return res.status(500).json({ error: err.message || 'Internal server error' });
-  }
-});
-
-/* â”€â”€ CONFIGURATION ENDPOINTS (Cost Sheet) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── CONFIGURATION ENDPOINTS (Cost Sheet) ────────────────────────────── */
 
 const costExtractionJobs = new Map();
 
@@ -1187,7 +1014,7 @@ app.post('/api/settings/costsheet/extract', upload.single('file'), async (req, r
     const selectedModel = req.body.model || 'deepseek-chat';
 
     const jobId = uuidv4();
-    
+
     costExtractionJobs.set(jobId, {
       status: 'processing',
       progress: `Initializing extraction...`,
@@ -1203,7 +1030,7 @@ app.post('/api/settings/costsheet/extract', upload.single('file'), async (req, r
       const job = costExtractionJobs.get(jobId);
       try {
         job.progress = 'Reading known services from configuration...';
-        
+
         let knownServiceNames = [];
         try {
           const configBuf = await s3ToBuffer(CONFIG_S3_KEY);
@@ -1215,12 +1042,12 @@ app.post('/api/settings/costsheet/extract', upload.single('file'), async (req, r
         }
 
         job.progress = 'Parsing PDF document...';
-        console.log('ðŸ“„ Parsing Cost Sheet PDF:', req.file.originalname, `(${req.file.size} bytes)`);
+        console.log('📄 Parsing Cost Sheet PDF:', req.file.originalname, `(${req.file.size} bytes)`);
         const parser = new PDFParse({ data: req.file.buffer });
         const pdfData = await parser.getText();
         const textContent = pdfData.text;
         await parser.destroy();
-        console.log(`âœ… PDF Parsed. Extracted ${textContent.length} characters.`);
+        console.log(`✅ PDF Parsed. Extracted ${textContent.length} characters.`);
 
         // Chunk size 25000 chars to avoid hitting max_tokens on output
         const maxChars = 25000;
@@ -1244,11 +1071,11 @@ Output ONLY valid JSON without markdown formatting. Do not output anything if no
         for (let i = 0; i < chunks.length; i++) {
           job.currentChunk = i + 1;
           job.progress = `Extracting chunk ${i + 1} of ${chunks.length}...`;
-          console.log(`ðŸ¤– [Cost Job ${jobId}] Processing chunk ${i + 1}/${chunks.length}...`);
-          
+          console.log(`🤖 [Cost Job ${jobId}] Processing chunk ${i + 1}/${chunks.length}...`);
+
           const aiResp = await generateAIContent(selectedModel, systemPrompt, chunks[i], 0.1, true);
           const rawContent = aiResp.content;
-          
+
           try {
             let parsed = JSON.parse(rawContent);
             if (parsed && !Array.isArray(parsed)) {
@@ -1257,26 +1084,26 @@ Output ONLY valid JSON without markdown formatting. Do not output anything if no
             }
             job.costs.push(...(parsed || []));
           } catch (e) {
-            console.error(`âŒ [Cost Job ${jobId}] Failed to parse JSON on chunk ${i+1}. Raw content was:`, rawContent.substring(0, 100) + '...');
+            console.error(`❌ [Cost Job ${jobId}] Failed to parse JSON on chunk ${i + 1}. Raw content was:`, rawContent.substring(0, 100) + '...');
           }
-          
+
           if (aiResp.usage) {
             job.usage.prompt_tokens += aiResp.usage.prompt_tokens || 0;
             job.usage.completion_tokens += aiResp.usage.completion_tokens || 0;
             job.usage.total_tokens += aiResp.usage.total_tokens || 0;
           }
-          
+
           if (i < chunks.length - 1) {
-             job.progress = `Finished chunk ${i + 1}. Moving to chunk ${i + 2}...`;
-             await new Promise(r => setTimeout(r, 1000));
+            job.progress = `Finished chunk ${i + 1}. Moving to chunk ${i + 2}...`;
+            await new Promise(r => setTimeout(r, 1000));
           }
         }
-        
+
         job.status = 'completed';
         job.progress = 'Extraction complete!';
-        console.log(`âœ… [Cost Job ${jobId}] Finished. Extracted ${job.costs.length} items.`);
+        console.log(`✅ [Cost Job ${jobId}] Finished. Extracted ${job.costs.length} items.`);
       } catch (err) {
-        console.error(`âŒ [Cost Job ${jobId}] Failed:`, err);
+        console.error(`❌ [Cost Job ${jobId}] Failed:`, err);
         job.status = 'error';
         job.error = err.message || 'Background extraction failed';
       }
@@ -1305,11 +1132,14 @@ app.post('/api/settings/costsheet/save', express.json(), async (req, res) => {
     const command = new PutObjectCommand({
       Bucket: BUCKET,
       Key: 'config/global_cost_sheet_data.json',
+      // Invalidate cache
+
       Body: Buffer.from(JSON.stringify(data)),
       ContentType: 'application/json',
     });
     await s3.send(command);
 
+    cachedCostSheetData = data;
     return res.json({ success: true, message: 'Cost sheet data saved successfully.' });
   } catch (err) {
     console.error('Error saving cost sheet data:', err);
@@ -1331,17 +1161,565 @@ app.delete('/api/settings/costsheet', async (req, res) => {
   try {
     const cmd = new DeleteObjectCommand({ Bucket: BUCKET, Key: 'config/global_cost_sheet_data.json' });
     await s3.send(cmd);
+    cachedCostSheetData = null;
     return res.json({ success: true });
   } catch (e) {
     return res.status(500).json({ error: 'Failed to delete' });
   }
 });
 
+/* ── REMEDIATION & ROLE SWAP API ────────────────────────────────────────────── */
 
-/* â”€â”€ ORACLE CREDENTIALS ENDPOINTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+function deriveRoleCode(roleName) {
+  if (!roleName) return 'CUSTOM_ROLE_JOB';
+  // If already looks like a code (e.g. ORA_... or contains underscores)
+  const clean = roleName.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+  if (clean.startsWith('ORA_')) return clean;
+  return `ORA_${clean}_JOB`;
+}
+
+function deriveCustomRoleCode(originalCode, customName) {
+  if (customName) {
+    const clean = customName.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+    if (clean.startsWith('XX_')) return clean;
+    return `XX_${clean}`;
+  }
+  if (originalCode.startsWith('ORA_')) {
+    return 'XX_' + originalCode.slice(4);
+  }
+  return `XX_${originalCode}`;
+}
+
+app.post('/api/remediation/plan', express.json(), async (req, res) => {
+  try {
+    const { serviceName, roleName, employeeName, employeeId, costlyPrivilege, customRoleName, customRoleCode } = req.body;
+
+    const origRoleName = roleName || 'OTL Administrator US';
+    const origRoleCode = deriveRoleCode(origRoleName);
+    const newRoleName = customRoleName || `XX_${origRoleName}`;
+    const newRoleCode = customRoleCode || deriveCustomRoleCode(origRoleCode, newRoleName);
+    const empName = employeeName || 'Parveen';
+    const empId = employeeId || '100597';
+
+    // Find all costly privileges under this service for this role if cachedResult exists
+    const costlyPrivs = [];
+    if (cachedResult && cachedResult.services) {
+      const svc = cachedResult.services.find(s => s.name === serviceName || s.id === serviceName);
+      if (svc && Array.isArray(svc.privileges)) {
+        for (const priv of svc.privileges) {
+          const hasRole = (priv.roles || []).some(r => r.name.toLowerCase() === origRoleName.toLowerCase());
+          if (hasRole) {
+            costlyPrivs.push({
+              name: priv.name,
+              id: priv.id,
+              costPerUser: priv.costPerUser || svc.unitCost || 0,
+            });
+          }
+        }
+      }
+    }
+
+    // If none found from cache, ensure at least the provided costlyPrivilege or sample default is included
+    if (costlyPrivs.length === 0) {
+      if (costlyPrivilege) {
+        costlyPrivs.push({ name: costlyPrivilege, id: costlyPrivilege, costPerUser: 0 });
+      } else {
+        costlyPrivs.push(
+          { name: 'HWM_MANAGE_TIME_WORK_AREA_PRIV', id: 'HWM_MANAGE_TIME_WORK_AREA_PRIV', costPerUser: 0 },
+          { name: 'HWM_TIME_MANAGEMENT_WORK_AREA_PRIV', id: 'HWM_TIME_MANAGEMENT_WORK_AREA_PRIV', costPerUser: 0 }
+        );
+      }
+    }
+
+    // Format Oracle HCM Data Loader (User.dat) syntax
+    const hdlLines = [
+      'METADATA|UserRole|PersonNumber|RoleCommonName|AddRemoveRole',
+      `MERGE|UserRole|${empId}|${origRoleCode}|REMOVE`,
+      `MERGE|UserRole|${empId}|${newRoleCode}|ADD`,
+    ];
+    const hdlContent = hdlLines.join('\n');
+
+    // Format SCIM v2 REST API payloads
+    const scimRevoke = {
+      method: 'PATCH',
+      url: `/hcmRestApi/scim/Roles/<${origRoleCode}_GUID>`,
+      headers: { 'Content-Type': 'application/scim+json', 'Authorization': 'Bearer <TOKEN>' },
+      body: { members: [{ value: `<${empName.toUpperCase()}_USER_GUID>`, operation: 'REMOVE' }] }
+    };
+
+    const scimAssign = {
+      method: 'PATCH',
+      url: `/hcmRestApi/scim/Roles/<${newRoleCode}_GUID>`,
+      headers: { 'Content-Type': 'application/scim+json', 'Authorization': 'Bearer <TOKEN>' },
+      body: { members: [{ value: `<${empName.toUpperCase()}_USER_GUID>`, operation: 'ADD' }] }
+    };
+
+    // Format Oracle Security Console SOP
+    const sopSteps = [
+      `1. Log in to Oracle Fusion Cloud as IT Security Manager.`,
+      `2. Navigate to: Navigator > Tools > Security Console > Roles.`,
+      `3. Search for seeded role: "${origRoleName}" (${origRoleCode}).`,
+      `4. Click the Actions menu (down arrow) > Select "Copy Role" > Choose "Copy top role and inherited roles".`,
+      `5. In Step 1 (Basic Information): Set Role Name to "${newRoleName}" and Role Code to "${newRoleCode}".`,
+      `6. In Step 2 (Function Security Privileges): Find and DELETE the following costly privileges:\n   ${costlyPrivs.map(p => `• ${p.name}`).join('\n   ')}`,
+      `7. (Optional): Click "Add Function Security Privilege" and add read-only/free duty roles (e.g. HWM_TIME_CARD_ENTRY_DUTY).`,
+      `8. Complete the wizard and click "Submit and Close". Wait ~2 minutes for ES indexes to refresh.`,
+      `9. Run HDL (User.dat) or use User Accounts UI to remove "${origRoleName}" and assign "${newRoleName}" to ${empName}.`,
+      `10. Run Scheduled Process: "Send Pending LDAP Requests" to finalize security synchronization.`
+    ];
+
+    return res.json({
+      success: true,
+      serviceName: serviceName || 'Oracle Fusion Time and Labor Cloud Service',
+      originalRole: { name: origRoleName, code: origRoleCode },
+      customRole: { name: newRoleName, code: newRoleCode },
+      targetEmployee: { name: empName, id: empId, login: empName.toLowerCase() },
+      assignmentType: 'DIRECT',
+      costlyPrivileges: costlyPrivs,
+      hdlContent,
+      scimRevoke,
+      scimAssign,
+      sopSteps,
+    });
+  } catch (err) {
+    console.error('Error generating remediation plan:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/remediation/download-hdl', express.json(), (req, res) => {
+  const { hdlContent, filename } = req.body;
+  const content = hdlContent || 'METADATA|UserRole|PersonNumber|RoleCommonName|AddRemoveRole\n';
+  const outName = filename || 'User.dat';
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${outName}"`);
+  return res.send(content);
+});
+
+app.get('/api/remediation/oracle-config', (_req, res) => {
+  const host = process.env.ORACLE_HOST || process.env.ORACLE_POD_URL;
+  const username = process.env.ORACLE_USERNAME;
+  return res.json({
+    configured: Boolean(host && username && process.env.ORACLE_PASSWORD),
+    host: host ? host.replace(/^https?:\/\//, '') : null,
+    fullHost: host || null,
+    username: username || null,
+  });
+});
+
+app.post('/api/remediation/oracle-auto-clone', express.json(), async (req, res) => {
+  try {
+    const podUrl = req.body.podUrl || process.env.ORACLE_HOST || process.env.ORACLE_POD_URL;
+    const username = req.body.username || process.env.ORACLE_USERNAME;
+    const password = req.body.password || process.env.ORACLE_PASSWORD;
+    const {
+      roles,
+      originalRoleName,
+      customRoleName,
+      customRoleCode,
+      privilegeToStrip,
+      replacementPrivilege,
+      employees,
+      headless = process.env.ORACLE_PUPPETEER_HEADLESS !== 'false'
+    } = req.body;
+
+    if (!podUrl || !username || !password) {
+      return res.status(400).json({ error: 'Oracle credentials not configured in backend .env (ORACLE_HOST, ORACLE_USERNAME, ORACLE_PASSWORD).' });
+    }
+
+    const rawRoles = (Array.isArray(roles) && roles.length > 0)
+      ? roles
+      : (originalRoleName ? [{
+        originalRoleName,
+        customRoleName: customRoleName || `XX_${originalRoleName}`,
+        customRoleCode: customRoleCode || deriveCustomRoleCode(deriveRoleCode(originalRoleName), customRoleName),
+        employees: Array.isArray(employees) ? employees : []
+      }] : []);
+
+    const targetRoles = rawRoles.map(r => ({
+      ...r,
+      employees: (Array.isArray(r.employees) && r.employees.length > 0)
+        ? r.employees
+        : (Array.isArray(employees) && employees.length > 0 ? employees : []),
+      replacementPrivilege: r.replacementPrivilege || replacementPrivilege || null
+    }));
+
+    if (targetRoles.length === 0 || !privilegeToStrip) {
+      return res.status(400).json({ error: 'At least one role and privilegeToStrip are required.' });
+    }
+
+    const jobId = `rpa_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const primaryRole = targetRoles[0];
+
+    // Launch RPA background execution
+    executeOracleRoleRemediation({
+      jobId,
+      podUrl,
+      username,
+      password,
+      roles: targetRoles,
+      originalRoleName: primaryRole.originalRoleName,
+      customRoleName: primaryRole.customRoleName,
+      customRoleCode: primaryRole.customRoleCode,
+      privilegeToStrip,
+      replacementPrivilege,
+      employees: (Array.isArray(primaryRole.employees) && primaryRole.employees.length > 0)
+        ? primaryRole.employees
+        : (Array.isArray(employees) ? employees : []),
+      headless: Boolean(headless)
+    }).catch(err => {
+      console.error(`[Oracle RPA] Background execution error on ${jobId}:`, err.message);
+    });
+
+    return res.json({
+      success: true,
+      jobId,
+      message: `Oracle Cloud RPA automation initiated for ${targetRoles.length} role(s).`,
+      rolesCount: targetRoles.length,
+      targetRoles,
+      target: {
+        originalRoleName: primaryRole.originalRoleName,
+        customRoleName: primaryRole.customRoleName,
+        customRoleCode: primaryRole.customRoleCode,
+        privilegeToStrip
+      }
+    });
+  } catch (err) {
+    console.error('Error starting Oracle RPA automation:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/remediation/oracle-jobs', (_req, res) => {
+  return res.json(getAllJobs ? getAllJobs() : []);
+});
+
+app.get('/api/remediation/oracle-status/:jobId', (req, res) => {
+  const job = getJobStatus(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ error: 'RPA Job not found.' });
+  }
+  return res.json(job);
+});
+
+/* ── HIERARCHY REMEDIATION ENDPOINT ──────────────────────────────────────────
+ *
+ * POST /api/remediation/oracle-hierarchy-remediate
+ *
+ * Body:
+ *  {
+ *    targetUsername:   "Parveen",           // HCM username to remediate
+ *    targetRoleName:   "OTL Administrator US",  // Top-level role on the user
+ *    costlyPrivileges: [
+ *      {
+ *        privilegeName:    "HWM_MANAGE_TIME_WORK_AREA_PRIV",
+ *        freeAlternative:  "HWM_VIEW_TIME_WORK_AREA_PRIV",
+ *        parentServiceName:"Fusion Cloud Time & Labor"
+ *      },
+ *      ...
+ *    ],
+ *    headless: true
+ *  }
+ *
+ * Recursive Logic:
+ *   For each costlyPrivilege:
+ *     1. Find its immediate parent service
+ *     2. Create XX_ copy of that service, remove costly priv, add free alt
+ *     3. If parent service directly on user → swap assignment
+ *        If inherited → copy parent role too, replace seeded service with XX_,
+ *                       then swap user's role assignment
+ * ─────────────────────────────────────────────────────────────────────────── */
+app.post('/api/remediation/oracle-hierarchy-remediate', express.json(), async (req, res) => {
+  try {
+    const podUrl = req.body.podUrl || process.env.ORACLE_HOST || process.env.ORACLE_POD_URL;
+    const username = req.body.username || process.env.ORACLE_USERNAME;
+    const password = req.body.password || process.env.ORACLE_PASSWORD;
+    const headless = req.body.headless !== undefined
+      ? Boolean(req.body.headless)
+      : process.env.ORACLE_PUPPETEER_HEADLESS !== 'false';
+
+    const {
+      targetUsername,
+      targetRoleName,
+      customRoleName,
+      customRoleCode,
+      costlyPrivileges = []
+    } = req.body;
+
+    if (!podUrl || !username || !password) {
+      return res.status(400).json({
+        error: 'Oracle credentials not configured. Set ORACLE_HOST, ORACLE_USERNAME, ORACLE_PASSWORD in backend .env.'
+      });
+    }
+
+    if (!targetUsername || !targetRoleName) {
+      return res.status(400).json({
+        error: 'targetUsername and targetRoleName are required.'
+      });
+    }
+
+    if (!costlyPrivileges || costlyPrivileges.length === 0) {
+      return res.status(400).json({
+        error: 'At least one costlyPrivilege entry is required.'
+      });
+    }
+
+    const jobId = `rpa_hier_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    // Launch hierarchy remediation as a background job
+    executeHierarchyRemediation({
+      jobId, podUrl, username, password,
+      targetUsername,
+      targetRoleName,
+      customRoleName,
+      customRoleCode,
+      costlyPrivileges,
+      headless
+    }).catch(err => {
+      console.error(`[Oracle Hierarchy RPA] Background error on ${jobId}:`, err.message);
+    });
+
+    return res.json({
+      success: true,
+      jobId,
+      message: `Hierarchy remediation job initiated for user "${targetUsername}".`,
+      target: {
+        user: targetUsername,
+        role: targetRoleName,
+        privilegesCount: costlyPrivileges.length,
+        privileges: costlyPrivileges.map(p => p.privilegeName)
+      }
+    });
+  } catch (err) {
+    console.error('Error starting Oracle Hierarchy RPA:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/* ── USER AUDIT ENDPOINTS (Oracle Demo Instance) ───────────────────────── */
+const { fetchUserAuditHistory, getUserFullRoleAudit, syncLiveOracleAudit, generateFullAuditCsv } = require('./services/oracleAuditService');
+
+app.get('/api/user-audit/config', (_req, res) => {
+  const host = process.env.ORACLE_HOST || process.env.ORACLE_POD_URL;
+  const username = process.env.ORACLE_USERNAME;
+  return res.json({
+    configured: Boolean(host && username && process.env.ORACLE_PASSWORD),
+    host: host ? host.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : null,
+    username: username || null,
+  });
+});
+
+app.get('/api/user-audit/export-csv', async (req, res) => {
+  try {
+    const threshold = parseInt(req.query.threshold, 10) || 90;
+    const search = req.query.search || req.query.q || '';
+    const sortBy = req.query.sortBy || 'name_asc';
+    const status = req.query.status || 'All';
+    const csvData = await generateFullAuditCsv({ threshold, search, sortBy, status });
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="Oracle_User_Audit_Full_Export_${new Date().toISOString().slice(0, 10)}.csv"`);
+    return res.send(csvData);
+  } catch (err) {
+    console.error('Error generating full audit CSV export:', err);
+    return res.status(500).json({ error: err.message || 'Failed to export CSV' });
+  }
+});
+
+app.get('/api/user-audit/history', async (req, res) => {
+  try {
+    const forceFresh = req.query.fresh === 'true';
+    const limit = parseInt(req.query.limit, 10) || 50;
+    const offset = parseInt(req.query.offset, 10) || 0;
+    const threshold = parseInt(req.query.threshold, 10) || 90;
+    const search = req.query.search || req.query.q || '';
+    const sortBy = req.query.sortBy || 'name_asc';
+    const auditData = await fetchUserAuditHistory({ forceFresh, limit, offset, threshold, search, sortBy });
+    return res.json(auditData);
+  } catch (err) {
+    console.error('Error fetching user audit history:', err);
+    return res.status(500).json({ error: err.message || 'Failed to fetch user audit history' });
+  }
+});
+
+app.post('/api/user-audit/sync-live', express.json(), async (req, res) => {
+  try {
+    const threshold = parseInt(req.body.threshold, 10) || 90;
+    const limit = parseInt(req.body.limit, 10) || 50;
+    const offset = parseInt(req.body.offset, 10) || 0;
+    const search = req.body.search || '';
+    const sortBy = req.body.sortBy || 'name_asc';
+    const liveData = await syncLiveOracleAudit({ threshold, forceFresh: true, limit, offset, search, sortBy });
+    return res.json(liveData);
+  } catch (err) {
+    console.error('Error during live sync with Oracle Cloud:', err);
+    return res.status(500).json({ error: err.message || 'Live audit synchronization failed' });
+  }
+});
+
+app.get('/api/user-audit/user/:username/roles', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const threshold = parseInt(req.query.threshold, 10) || 90;
+    const roleData = await getUserFullRoleAudit(username, threshold);
+    return res.json(roleData);
+  } catch (err) {
+    console.error('Error fetching full roles for user:', err);
+    return res.status(500).json({ error: err.message || 'Failed to fetch user roles' });
+  }
+});
+
+/* ── FUNCTIONAL CONFLICTS / SOD AUDIT ENDPOINTS ───────────────────────────── */
+const { detectFunctionalConflicts, loadSodRules } = require('./services/sodConflictService');
+const { stripPrivilegeFromOracleRole, revokeRoleFromOracleUser } = require('./services/oracleSodRemediation');
+
+const sodJobs = new Map();
+
+app.get('/api/sod/rules', (_req, res) => {
+  return res.json(loadSodRules());
+});
+
+app.get('/api/sod/conflicts', async (req, res) => {
+  try {
+    const forceFresh = req.query.fresh === 'true';
+    const limit = parseInt(req.query.limit, 10) || 100;
+    const conflictData = await detectFunctionalConflicts({ forceFresh, limit });
+    return res.json(conflictData);
+  } catch (err) {
+    console.error('Error detecting functional conflicts:', err);
+    return res.status(500).json({ error: err.message || 'Failed to detect functional conflicts' });
+  }
+});
+
+app.get('/api/sod/status/:jobId', (req, res) => {
+  const job = sodJobs.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ error: 'SoD Remediation job not found.' });
+  }
+  return res.json(job);
+});
+
+app.post('/api/sod/remediate', express.json(), async (req, res) => {
+  const {
+    username,
+    roleToRevoke,
+    targetRole,
+    privilegeToStrip,
+    privilegeCode,
+    strategy = 'STRIP_PRIVILEGE',
+    customRoleName,
+    customRoleCode,
+    headless = true,
+    ruleId,
+    conflictName
+  } = req.body;
+
+  const effectiveRole = targetRole || roleToRevoke;
+  if (!username || !effectiveRole) {
+    return res.status(400).json({ error: 'Username and targetRole/roleToRevoke are required.' });
+  }
+
+  const jobId = 'sod_job_' + Date.now();
+  const startTime = new Date();
+
+  const isStripPrivilege = strategy === 'STRIP_PRIVILEGE';
+  const isHeadless = Boolean(headless);
+  const initialJob = {
+    jobId,
+    username,
+    roleToRevoke: effectiveRole,
+    targetRole: effectiveRole,
+    privilegeToStrip: privilegeToStrip || 'Conflicting Privilege',
+    privilegeCode: privilegeCode || 'P01',
+    strategy,
+    headless: isHeadless,
+    ruleId: ruleId || 'SOD-019',
+    conflictName: conflictName || 'Segregation of Duties Conflict',
+    status: 'STARTING',
+    progress: 10,
+    currentStep: isStripPrivilege
+      ? `Initializing Privilege Stripping Agent for "${effectiveRole}" (${isHeadless ? 'Headless' : 'Visible Browser'})...`
+      : `Initializing Role Revocation Agent for "${effectiveRole}" (${isHeadless ? 'Headless' : 'Visible Browser'})...`,
+    logs: [
+      `[${startTime.toLocaleTimeString()}] 🚀 Initiated Automated SoD Remediation Studio for "${username}".`,
+      `[${startTime.toLocaleTimeString()}] 🛡️ Target Role: "${effectiveRole}".`,
+      `[${startTime.toLocaleTimeString()}] 🖥️ Verification Browser: ${isHeadless ? 'Headless (Capturing Verification Proof Screenshots)' : 'Visible (Interactive Window on Desktop)'}.`,
+      isStripPrivilege
+        ? `[${startTime.toLocaleTimeString()}] ✂️ Remediation Strategy: Strip privilege "${privilegeToStrip || privilegeCode}" & preserve user capabilities.`
+        : `[${startTime.toLocaleTimeString()}] 🗑️ Remediation Strategy: De-provision entire role "${effectiveRole}".`,
+      `[${startTime.toLocaleTimeString()}] 📜 Compliance Rule: ${ruleId || 'SOD-RULE'}.`
+    ],
+    createdAt: startTime.toISOString()
+  };
+
+  sodJobs.set(jobId, initialJob);
+
+  const updateJob = (updates) => {
+    const current = sodJobs.get(jobId) || {};
+    sodJobs.set(jobId, { ...current, ...updates, updatedAt: new Date().toISOString() });
+  };
+
+  // Route to either Privilege Stripping (Recommended) or Role Revocation
+  if (isStripPrivilege) {
+    stripPrivilegeFromOracleRole({
+      username,
+      roleName: effectiveRole,
+      roleCode: req.body.roleCode || '',
+      privilegeToStrip,
+      privilegeCode,
+      customRoleName,
+      customRoleCode,
+      ruleId,
+      jobId,
+      headless: isHeadless,
+      updateJob
+    }).catch((err) => {
+      console.error(`[SoD Strip Bot] Error on ${jobId}:`, err);
+      const cur = sodJobs.get(jobId) || {};
+      sodJobs.set(jobId, {
+        ...cur,
+        status: 'FAILED',
+        currentStep: `Remediation failed: ${err.message}`,
+        logs: [...(cur.logs || []), `[${new Date().toLocaleTimeString()}] ❌ Failed: ${err.message}`]
+      });
+    });
+  } else {
+    revokeRoleFromOracleUser({
+      username,
+      roleName: effectiveRole,
+      roleCode: req.body.roleCode || '',
+      ruleId,
+      jobId,
+      headless: isHeadless,
+      updateJob
+    }).catch((err) => {
+      console.error(`[SoD Revoke Bot] Error on ${jobId}:`, err);
+      const cur = sodJobs.get(jobId) || {};
+      sodJobs.set(jobId, {
+        ...cur,
+        status: 'FAILED',
+        currentStep: `Remediation failed: ${err.message}`,
+        logs: [...(cur.logs || []), `[${new Date().toLocaleTimeString()}] ❌ Failed: ${err.message}`]
+      });
+    });
+  }
+
+  return res.json({
+    success: true,
+    jobId,
+    strategy,
+    message: isStripPrivilege
+      ? `Privilege stripping initiated for "${username}": removing "${privilegeToStrip || privilegeCode}" from "${effectiveRole}".`
+      : `Role revocation initiated for "${username}": removing "${effectiveRole}".`,
+    timestamp: new Date().toISOString()
+  });
+});
+
+/* ── ORACLE CREDENTIALS ENDPOINTS ───────────────────────────────────────────── */
 const ORACLE_CREDS_KEY = 'config/oracle_credentials.json';
 
-// GET â€” load saved credentials
+// GET — load saved credentials
 app.get('/api/settings/oracle-credentials', async (req, res) => {
   try {
     const buf = await s3ToBuffer(ORACLE_CREDS_KEY);
@@ -1352,7 +1730,7 @@ app.get('/api/settings/oracle-credentials', async (req, res) => {
   }
 });
 
-// POST â€” save credentials to S3
+// POST — save credentials to S3
 app.post('/api/settings/oracle-credentials', async (req, res) => {
   try {
     const { host, username, password } = req.body;
@@ -1366,7 +1744,7 @@ app.post('/api/settings/oracle-credentials', async (req, res) => {
       Body: JSON.stringify(payload, null, 2),
       ContentType: 'application/json',
     }));
-    console.log('âœ… Oracle credentials saved to S3');
+    console.log('✅ Oracle credentials saved to S3');
     return res.json({ success: true });
   } catch (err) {
     console.error('Error saving Oracle credentials:', err.message);
@@ -1374,18 +1752,18 @@ app.post('/api/settings/oracle-credentials', async (req, res) => {
   }
 });
 
-// DELETE â€” remove credentials
+// DELETE — remove credentials
 app.delete('/api/settings/oracle-credentials', async (req, res) => {
   try {
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: ORACLE_CREDS_KEY }));
-    console.log('ðŸ—‘ï¸ Oracle credentials deleted');
+    console.log('🗑️ Oracle credentials deleted');
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ error: 'Failed to delete credentials' });
   }
 });
 
-// POST â€” test connection
+// POST — test connection
 // Tries multiple Oracle Fusion Cloud REST API paths in order.
 app.post('/api/settings/oracle-credentials/test', async (req, res) => {
   try {
@@ -1407,7 +1785,7 @@ app.post('/api/settings/oracle-credentials/test', async (req, res) => {
       { path: '/iam/governance/selfservice/api/v1/roles?limit=1',  label: 'OIG REST API' },
     ];
 
-    console.log(`ðŸ”Œ [Oracle Test] Connecting to ${cleanHost}...`);
+    console.log(`🔌 [Oracle Test] Connecting to ${cleanHost}...`);
 
     let lastStatus = null;
     for (const { path, label } of candidates) {
@@ -1428,37 +1806,36 @@ app.post('/api/settings/oracle-credentials/test', async (req, res) => {
 
       lastStatus = testRes.status;
 
-      // 401/403 = host reachable but wrong credentials â€” stop trying paths
+      // 401/403 = host reachable but wrong credentials — stop trying paths
       if (testRes.status === 401 || testRes.status === 403) {
-        console.warn(`âš ï¸  [Oracle Test] ${label} â€” Auth failed (${testRes.status})`);
+        console.warn(`⚠️  [Oracle Test] ${label} — Auth failed (${testRes.status})`);
         return res.status(401).json({
-          error: `Wrong username or password (HTTP ${testRes.status}). The Oracle host is reachable â€” please check your credentials.`
+          error: `Wrong username or password (HTTP ${testRes.status}). The Oracle host is reachable — please check your credentials.`
         });
       }
 
       // 200 = success
       if (testRes.ok) {
-        console.log(`âœ… [Oracle Test] Connected via ${label}`);
+        console.log(`✅ [Oracle Test] Connected via ${label}`);
         return res.json({ success: true, message: `Connected to Oracle Fusion successfully via ${label}` });
       }
 
-      console.warn(`âš ï¸  [Oracle Test] ${label} â†’ HTTP ${testRes.status}, trying next...`);
+      console.warn(`⚠️  [Oracle Test] ${label} → HTTP ${testRes.status}, trying next...`);
     }
 
     // All paths failed
-    console.error(`âŒ [Oracle Test] All paths failed. Last HTTP: ${lastStatus}`);
+    console.error(`❌ [Oracle Test] All paths failed. Last HTTP: ${lastStatus}`);
     return res.status(404).json({
-      error: `Could not connect â€” all Oracle API paths returned errors (last HTTP ${lastStatus}). Check the host URL is correct, e.g. https://yourcompany.fa.us2.oraclecloud.com`
+      error: `Could not connect — all Oracle API paths returned errors (last HTTP ${lastStatus}). Check the host URL is correct, e.g. https://yourcompany.fa.us2.oraclecloud.com`
     });
 
   } catch (err) {
-    console.error('âŒ [Oracle Test] Unexpected error:', err.message);
+    console.error('❌ [Oracle Test] Unexpected error:', err.message);
     return res.status(500).json({ error: err.message || 'Unexpected server error' });
   }
 });
 
-
-/* â”€â”€ Helper: load Oracle credentials from S3 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── Helper: load Oracle credentials from S3 ─────────────────────────── */
 async function loadOracleCredentials() {
   try {
     const buf = await s3ToBuffer(ORACLE_CREDS_KEY);
@@ -1468,13 +1845,25 @@ async function loadOracleCredentials() {
   }
 }
 
-/* â”€â”€ SERVER START â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-
-app.listen(PORT, () => {
+/* ── SERVER START ───────────────────────────────────────────────────────────── */
+const server = app.listen(PORT, () => {
   console.log('')
-  console.log('ðŸš€  HCM Upload Server started')
+  console.log('🚀  HCM Upload Server started')
   console.log(`    URL:    http://localhost:${PORT}`)
   console.log(`    Bucket: ${BUCKET}  (${process.env.AWS_REGION})`)
   console.log(`    CORS:   ${ORIGIN}`)
   console.log('')
 })
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Stop the other server or set $env:PORT='3002' before running npm run dev.`)
+    process.exitCode = 1
+    return
+  }
+
+  console.error('Server failed to start:', err)
+  process.exitCode = 1
+})
+
+module.exports = app;

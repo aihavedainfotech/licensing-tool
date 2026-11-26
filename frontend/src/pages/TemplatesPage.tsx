@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { LayoutTemplate, BookOpen, ChevronLeft, ChevronRight, X, Maximize2, Download, CheckCircle2 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { useTemplate } from '../context/TemplateContext';
