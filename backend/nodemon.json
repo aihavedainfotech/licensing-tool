@@ -1,0 +1,19 @@
+{
+  "watch": [
+    "index.js",
+    "services/",
+    "routes/",
+    "middleware/"
+  ],
+  "ext": "js,mjs,cjs",
+  "ignore": [
+    "config/**",
+    "*.json",
+    "*.xlsx",
+    "*.csv",
+    "temp/**",
+    "uploads/**",
+    "node_modules/**"
+  ],
+  "delay": "1500"
+}
