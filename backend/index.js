@@ -614,29 +614,25 @@ function buildHierarchy(rows, costConfig, costData = [], subscribedData = new Ma
 
     if (minQty < 1) minQty = 1;
 
-    // Lookup subscribed quantity by normalized service name or SKU
-    const normalizeServiceName = (s) => (s || '').toLowerCase()
-      .replace(/[\-_]/g, ' ')
-      .replace(/\b(hosted\s+named\s+user|hosted\s+employee)\b/gi, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-
+    // Lookup subscribed quantity by SKU or by normalized service name
     let subscribedQuantity = undefined;
-    const cleanSvc = normalizeServiceName(svcName);
-    for (const [sName, info] of subNameMap.entries()) {
-      if (normalizeServiceName(sName) === cleanSvc || normalizeServiceName(info.serviceName) === cleanSvc) {
-        subscribedQuantity = info.qty;
-        if (info.partNumber) finalSku = info.partNumber;
-        break;
+    if (subSkuMap.has(finalSku)) {
+      subscribedQuantity = subSkuMap.get(finalSku);
+    } else if (sku && subSkuMap.has(sku)) {
+      subscribedQuantity = subSkuMap.get(sku);
+    } else {
+      const cleanSvc = svcName.toLowerCase().replace(/[\-_]/g, ' ').replace(/\s+/g, ' ');
+      for (const [sName, info] of subNameMap.entries()) {
+        if (sName === cleanSvc || cleanSvc.includes(sName) || sName.includes(cleanSvc)) {
+          subscribedQuantity = info.qty;
+          if (!finalSku && info.partNumber) finalSku = info.partNumber;
+          break;
+        }
       }
     }
 
-    if (subscribedQuantity === undefined && sku && subSkuMap.has(sku)) {
-      subscribedQuantity = subSkuMap.get(sku);
-    }
-
     // MANDATORY RULE: When a SAAS Service Usage Metrics Report is uploaded,
-    // ONLY include services that exist in the uploaded report!
+    // ONLY include services that match contracted subscriptions in the uploaded report!
     const hasSubscribedReport = subSkuMap.size > 0 || subNameMap.size > 0;
     if (hasSubscribedReport && subscribedQuantity === undefined) {
       continue;
