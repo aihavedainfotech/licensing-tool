@@ -94,7 +94,7 @@ function LoadingScreen() {
 }
 
 /* ─── Empty ───────────────────────────────────────────── */
-function EmptyScreen({ onGoBack }: { onGoBack: () => void }) {
+function EmptyScreen({ onGoBack, onRetry }: { onGoBack: () => void; onRetry?: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] gap-6">
       <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: '#fef2f2' }}>
@@ -102,12 +102,20 @@ function EmptyScreen({ onGoBack }: { onGoBack: () => void }) {
       </div>
       <div className="text-center">
         <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--theme-text-main)' }}>No Data Available</h2>
-        <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>Upload your files to see licence analytics.</p>
+        <p className="text-sm" style={{ color: 'var(--theme-text-muted)' }}>Upload your files to see licence analytics, or check if analysis is complete.</p>
       </div>
-      <button onClick={onGoBack} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold"
-        style={{ background: '#1d6fa4', color: 'white' }}>
-        <ArrowLeft size={15} /> Back to Upload
-      </button>
+      <div className="flex items-center gap-3">
+        {onRetry && (
+          <button onClick={onRetry} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white shadow-sm transition-all cursor-pointer hover:opacity-90"
+            style={{ background: 'var(--acc, #1D4ED8)' }}>
+            <RefreshCw size={15} /> Refresh / Check Server Data
+          </button>
+        )}
+        <button onClick={onGoBack} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all cursor-pointer hover:bg-slate-50"
+          style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-main)', background: 'var(--theme-bg-card)' }}>
+          <ArrowLeft size={15} /> Back to Upload
+        </button>
+      </div>
     </div>
   )
 }
@@ -760,23 +768,26 @@ export default function ResultsPage() {
   const [selPriv, setSelPriv] = useState<Privilege | null>(null)
   const [selRole, setSelRole] = useState<Role | null>(null)
 
+  const loadResults = async () => {
+    setStatus('loading')
+    try {
+      const res = await fetch('http://localhost:3001/api/analysis-results')
+      if (!res.ok) throw new Error('Not ready')
+      const data = await res.json()
+      if (data?.services?.length > 0) {
+        setResult(data)
+        setOriginalResult(JSON.parse(JSON.stringify(data)))
+        setStatus('ready')
+      } else {
+        setStatus('empty')
+      }
+    } catch {
+      setStatus('empty')
+    }
+  }
+
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('http://localhost:3001/api/analysis-results')
-        if (!res.ok) throw new Error('Not ready')
-        const data = await res.json()
-        if (cancelled) return
-        if (data?.services?.length > 0) {
-          setResult(data)
-          setOriginalResult(JSON.parse(JSON.stringify(data)))
-          setStatus('ready')
-        }
-        else setStatus('empty')
-      } catch { if (!cancelled) setStatus('empty') }
-    })()
-    return () => { cancelled = true }
+    loadResults()
   }, [])
 
   function selectService(svc: Service) {
@@ -1317,7 +1328,7 @@ export default function ResultsPage() {
 
       {/* Main content */}
       {status === 'loading' && <LoadingScreen />}
-      {status === 'empty' && <EmptyScreen onGoBack={() => navigate('/upload')} />}
+      {status === 'empty' && <EmptyScreen onGoBack={() => navigate('/upload')} onRetry={loadResults} />}
       {status === 'ready' && result && (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Cascading Panels */}
